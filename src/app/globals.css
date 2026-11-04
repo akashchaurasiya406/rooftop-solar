@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  Design tokens. Restrained palette per the brief:
+  warm off-white paper, near-black ink, one deep-green brand colour.
+  Score colours: HIGH = green, MEDIUM = amber, LOW = neutral stone
+  (not red — a low score is "call instead of visit", never a rejection).
+*/
+@theme {
+  --color-paper: #fafaf7;
+  --color-surface: #ffffff;
+  --color-ink: #1c1b18;
+  --color-muted: #6b6860;
+  --color-line: #e7e5df;
+  --color-line-strong: #d6d3cb;
+
+  --color-brand: #1f5f45;
+  --color-brand-hover: #174a36;
+  --color-brand-soft: #e8f1ec;
+
+  --color-high: #1f7a4d;
+  --color-high-soft: #e6f4ec;
+  --color-medium: #a86207;
+  --color-medium-soft: #fdf3e2;
+  --color-low: #6b6860;
+  --color-low-soft: #f0efeb;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+
+  --font-sans: var(--font-inter), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 14px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Visible focus for keyboard users, everywhere. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Tabular numbers for money and units so columns line up. */
+.num {
+  font-variant-numeric: tabular-nums;
 }

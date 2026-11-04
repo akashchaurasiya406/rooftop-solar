@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Rooftop Solar — lead qualification, quotes and project tracking
 
-## Getting Started
+A web app for a rooftop-solar installer in Vidarbha:
 
-First, run the development server:
+1. Homeowners fill a short form and upload an electricity bill.
+2. AI reads the bill. Staff confirm the values, and the lead gets a transparent score with a recommended system size.
+3. Sales builds a same-day quote with subsidy and payback, worked out from **dated rule tables**, never by AI.
+4. Customers track their installation through a status link.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env          # fill in values (see below)
+npx prisma dev --name solar   # local Postgres (or use any Postgres URL)
+npm run db:migrate
+npm run db:seed
+npm run dev                   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Demo accounts (password `Demo@1234`): `sales@demo.solar`, `manager@demo.solar`, `homeowner@demo.solar`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+|---|---|
+| `npm test` | Unit tests (quote maths, scoring, dated rules, auth) |
+| `npm run typecheck` | TypeScript check |
+| `npm run db:seed` | Reset demo data |
 
-## Learn More
+## Layout
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+prisma/            schema + seed data
+src/lib/calc/      quote maths, subsidy, scoring, dated rules (pure, tested)
+src/lib/auth/      sessions, role checks, validation
+src/app/           pages (sales, my, auth)
+src/components/    shared UI
+ASSUMPTIONS.md     every assumption not in the client brief
+```
