@@ -9,25 +9,15 @@ A web app for a rooftop-solar installer in Vidarbha:
 
 ## Quick start
 
-Use two terminals.
-
-**Terminal 1: database** (keep it open)
-
-```bash
-npm run db:start
-```
-
-**Terminal 2: app**
+Needs a Postgres database. A free [Neon](https://neon.tech) project works; put its connection string in `.env`.
 
 ```bash
 npm install
-cp .env.example .env          # fill in values
-npm run db:migrate            # first time only
-npm run db:seed               # first time, or to reset demo data
+cp .env.example .env          # set DATABASE_URL and SESSION_SECRET
+npx prisma migrate deploy     # create tables
+npm run db:seed               # demo data (re-run any time to reset)
 npm run dev                   # http://localhost:3000
 ```
-
-If a page shows "Something went wrong", check that Terminal 1 is still running.
 
 Demo accounts (password `Demo@1234`): `sales@demo.solar`, `manager@demo.solar`, `homeowner@demo.solar`.
 
