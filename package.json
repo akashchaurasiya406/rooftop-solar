@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "db:start": "prisma dev --name solar",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",

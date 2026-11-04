@@ -9,14 +9,25 @@ A web app for a rooftop-solar installer in Vidarbha:
 
 ## Quick start
 
+Use two terminals.
+
+**Terminal 1: database** (keep it open)
+
+```bash
+npm run db:start
+```
+
+**Terminal 2: app**
+
 ```bash
 npm install
-cp .env.example .env          # fill in values (see below)
-npx prisma dev --name solar   # local Postgres (or use any Postgres URL)
-npm run db:migrate
-npm run db:seed
+cp .env.example .env          # fill in values
+npm run db:migrate            # first time only
+npm run db:seed               # first time, or to reset demo data
 npm run dev                   # http://localhost:3000
 ```
+
+If a page shows "Something went wrong", check that Terminal 1 is still running.
 
 Demo accounts (password `Demo@1234`): `sales@demo.solar`, `manager@demo.solar`, `homeowner@demo.solar`.
 
