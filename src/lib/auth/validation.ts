@@ -8,7 +8,6 @@ export const loginSchema = z.object({
 export const signupSchema = z.object({
   name: z.string().trim().min(2, "Enter your full name.").max(80),
   email: z.string().trim().toLowerCase().email("Enter a valid email address."),
-  // Indian mobile: 10 digits starting 6–9, optional +91 / 0 prefix.
   phone: z
     .string()
     .trim()
@@ -22,7 +21,6 @@ export const signupSchema = z.object({
     .regex(/\d/, "Include at least one number."),
 });
 
-/** Only allow redirects to our own pages (blocks open-redirects like //evil.com). */
 export function safeNext(next: unknown): string | null {
   if (typeof next !== "string") return null;
   if (!next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;

@@ -1,11 +1,5 @@
 @import "tailwindcss";
 
-/*
-  Design tokens. Restrained palette per the brief:
-  warm off-white paper, near-black ink, one deep-green brand colour.
-  Score colours: HIGH = green, MEDIUM = amber, LOW = neutral stone
-  (not red — a low score is "call instead of visit", never a rejection).
-*/
 @theme {
   --color-paper: #fafaf7;
   --color-surface: #ffffff;
@@ -44,13 +38,11 @@ body {
   font-feature-settings: "cv11", "ss01";
 }
 
-/* Visible focus for keyboard users, everywhere. */
 :focus-visible {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
 
-/* Tabular numbers for money and units so columns line up. */
 .num {
   font-variant-numeric: tabular-nums;
 }

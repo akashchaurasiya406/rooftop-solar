@@ -13,8 +13,6 @@ export interface FormState {
   values?: Record<string, string>;
 }
 
-// Compared against when the email doesn't exist, so response time doesn't
-// reveal which emails are registered.
 const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 
 export async function login(_prev: FormState, form: FormData): Promise<FormState> {
@@ -35,7 +33,6 @@ export async function login(_prev: FormState, form: FormData): Promise<FormState
   redirect(next && canAccess(next, user.role) ? next : homeFor(user.role));
 }
 
-// Public sign-up always creates a HOMEOWNER. Staff accounts are created by an admin.
 export async function signup(_prev: FormState, form: FormData): Promise<FormState> {
   const raw = {
     name: String(form.get("name") ?? ""),

@@ -1,23 +1,17 @@
-// Seeds realistic FAKE data. No real people, phone numbers or consumer numbers.
-// Run: npm run db:seed   (wipes and recreates everything)
-
 import { PrismaClient, type LeadStatus, type Ownership, type RoofType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { scoreLead } from "../src/lib/calc/scoring";
 
 const prisma = new PrismaClient();
-const DEMO_PASSWORD = "Demo@1234"; // demo accounts only — listed in deployment.md
+const DEMO_PASSWORD = "Demo@1234";
 const ist = (s: string) => new Date(`${s}T00:00:00+05:30`);
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
-// ASSUMPTION A-08: installed prices per kW (not given in the brief).
 const PRICE_BANDS = [
   { minKw: 1, maxKw: 2.99, pricePerKw: 65000 },
   { minKw: 3, maxKw: 5.99, pricePerKw: 58000 },
   { minKw: 6, maxKw: 10, pricePerKw: 54000 },
 ];
-// ASSUMPTION A-09: ₹9.4/unit average residential tariff, ₹3.5/unit export rate,
-// 100 sq ft of shade-free roof per kW.
 const SETTING = { generationPerKwYear: 1400, tariffPerUnit: 9.4, exportRatePerUnit: 3.5, sqftPerKw: 100 };
 
 type SeedLead = {
@@ -33,7 +27,6 @@ type SeedLead = {
   ageDays: number;
 };
 
-// First three rows are the sample data from the brief.
 const LEADS: SeedLead[] = [
   { code: "LD-30881", name: "Prashant Wankhede", ownership: "OWNER", roofType: "RCC", roofAreaSqft: 450, monthlyBill: 3200, monthlyUnits: 340, pincode: "440022", district: "Nagpur", ageDays: 1 },
   { code: "LD-30902", name: "Rohit Meshram", ownership: "TENANT", roofType: "RCC", roofAreaSqft: 400, monthlyBill: 1900, monthlyUnits: 210, pincode: "440015", district: "Nagpur", ageDays: 1 },
@@ -53,7 +46,6 @@ const LEADS: SeedLead[] = [
   { code: "LD-30998", name: "Rekha Chaudhari", ownership: "OWNER", roofType: "RCC", roofAreaSqft: 600, monthlyBill: 4200, monthlyUnits: 440, pincode: "440034", district: "Nagpur", ageDays: 20 },
 ];
 
-// Fake but realistic-looking numbers (all start with 9999 so they are obviously fake).
 const fakePhone = (i: number) => `99990${String(10000 + i * 137).slice(-5)}`;
 const fakeConsumerNo = (i: number) => `4100${String(87654321 + i * 9173).slice(-8)}`;
 
@@ -96,7 +88,6 @@ async function main() {
   await prisma.subsidyRule.createMany({
     data: [
       {
-        // Illustrative older rule — exists to demonstrate that old quotes keep old rules.
         name: "Residential rooftop (illustrative older rule)",
         slabs: [{ uptoKw: 3, perKw: 14588 }],
         capAmount: 43764,
@@ -134,7 +125,6 @@ async function main() {
       },
       SETTING,
     );
-    // Newest leads still need bill review; older ones have been routed.
     let status: LeadStatus;
     if (l.ageDays === 0) status = "BILL_REVIEW";
     else status = result.nextAction === "CALL" ? "CALL_ONLY" : "SURVEY";

@@ -6,7 +6,6 @@ import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "My solar" };
 
-// Homeowner-facing wording: plain, no internal jargon, no scores.
 const HOMEOWNER_STATUS: Record<string, string> = {
   NEW: "We received your request",
   BILL_REVIEW: "We are checking your bill",
@@ -20,7 +19,6 @@ const HOMEOWNER_STATUS: Record<string, string> = {
 
 export default async function MyPage() {
   const session = await requireRole("HOMEOWNER");
-  // Access control: a homeowner only ever sees their own leads.
   const leads = await db.lead.findMany({
     where: { homeownerId: session.userId },
     orderBy: { createdAt: "desc" },

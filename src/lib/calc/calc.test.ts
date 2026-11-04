@@ -3,7 +3,6 @@ import { computeQuote, computeSubsidy, findPriceBand, QuoteError } from "./quote
 import { findOverlaps, isEffectiveOn, pickEffective } from "./rules";
 import { recommendSize, scoreLead } from "./scoring";
 
-// Central residential scheme as given in the brief.
 const SCHEME = {
   slabs: [
     { uptoKw: 2, perKw: 30000 },
@@ -25,10 +24,10 @@ describe("computeSubsidy", () => {
   it.each([
     [1, 30000],
     [2, 60000],
-    [3, 78000], // 2×30k + 18k
-    [5, 78000], // nothing beyond 3 kW, cap holds
+    [3, 78000],
+    [5, 78000],
     [10, 78000],
-    [2.5, 69000], // pro-rata third kW (assumption A-03)
+    [2.5, 69000],
     [0.5, 15000],
   ])("%s kW → ₹%s", (kw, expected) => {
     expect(computeSubsidy(kw, SCHEME)).toBe(expected);
@@ -89,14 +88,14 @@ describe("computeQuote", () => {
       subsidy: SCHEME,
       setting: SETTING,
     });
-    expect(q.grossCost).toBe(174000); // 3 × 58,000
+    expect(q.grossCost).toBe(174000);
     expect(q.subsidy).toBe(78000);
     expect(q.netCost).toBe(96000);
-    expect(q.annualGeneration).toBe(4200); // 3 × 1,400
+    expect(q.annualGeneration).toBe(4200);
     expect(q.annualConsumption).toBe(4080);
     expect(q.selfUsedUnits).toBe(4080);
     expect(q.exportedUnits).toBe(120);
-    expect(q.annualSavings).toBe(Math.round(4080 * 9.4 + 120 * 3.5)); // 38,772
+    expect(q.annualSavings).toBe(Math.round(4080 * 9.4 + 120 * 3.5));
     expect(q.paybackYears).toBe(2.5);
   });
 
@@ -227,6 +226,6 @@ describe("scoreLead — edge cases", () => {
       SCORE_SETTINGS,
     );
     expect(r.score).toBe("HIGH");
-    expect(r.recommendedKw).toBe(3); // 3200 / 9.4 ≈ 340 units
+    expect(r.recommendedKw).toBe(3);
   });
 });

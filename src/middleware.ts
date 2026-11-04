@@ -5,7 +5,6 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
 
-  // Signed-in users don't need the login/signup pages.
   if (session && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL(homeFor(session.role), req.url));
   }

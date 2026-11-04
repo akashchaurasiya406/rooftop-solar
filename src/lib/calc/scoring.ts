@@ -1,7 +1,3 @@
-// Lead scoring and system sizing.
-// The AI only READS the bill (Day 2). The score itself comes from these
-// transparent rules, so staff can always see why a lead got its score.
-
 export type Score = "HIGH" | "MEDIUM" | "LOW";
 export type NextAction = "SURVEY" | "CALL";
 
@@ -9,38 +5,31 @@ export interface ScoreInput {
   ownership: "OWNER" | "TENANT";
   roofType: "RCC" | "METAL_SHEET" | "ASBESTOS" | "OTHER";
   roofAreaSqft: number;
-  monthlyBill: number; // ₹
-  monthlyUnits?: number | null; // from bill, if confirmed
+  monthlyBill: number;
+  monthlyUnits?: number | null;
   sanctionedLoadKw?: number | null;
 }
 
 export interface ScoreSettings {
-  generationPerKwYear: number; // 1,400
-  sqftPerKw: number; // shade-free roof area per kW
+  generationPerKwYear: number;
+  sqftPerKw: number;
 }
 
 export interface ScoreResult {
   score: Score;
-  reasons: string[]; // top three, most important first
+  reasons: string[];
   recommendedKw: number | null;
   nextAction: NextAction;
 }
 
-// ASSUMPTION A-05: thresholds below are our starting values for Vidarbha
-// homes; they live in one place so the client can tune them after a pilot.
 export const THRESHOLDS = {
-  smallBill: 1000, // ₹/month — below this, solar savings are too small
-  goodBill: 2500, // ₹/month — clearly worth a visit
-  smallUnits: 120, // units/month
+  smallBill: 1000,
+  goodBill: 2500,
+  smallUnits: 120,
   minKw: 1,
   maxResidentialKw: 10,
 } as const;
 
-/**
- * Recommended size: enough to cover yearly consumption, rounded to the
- * nearest whole kW, at least 1 kW, then limited by roof area and sanctioned load.
- * Sample data: 340 units → 3 kW, 85 units → 1 kW.
- */
 export function recommendSize(
   monthlyUnits: number,
   settings: ScoreSettings,
@@ -58,8 +47,6 @@ export function recommendSize(
       limitedBy = "roof";
     }
   }
-  // ASSUMPTION A-06: system size should not exceed sanctioned load without a
-  // load-extension application, so we cap at it and flag it.
   if (limits.sanctionedLoadKw && limits.sanctionedLoadKw > 0 && limits.sanctionedLoadKw < kw) {
     kw = Math.floor(limits.sanctionedLoadKw);
     limitedBy = "load";
@@ -73,8 +60,6 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
   const negatives: string[] = [];
   const positives: string[] = [];
 
-  // Units from the confirmed bill beat the homeowner's own estimate.
-  // ASSUMPTION A-07: without a bill, estimate units as bill ÷ ₹9.4 per unit.
   const units = input.monthlyUnits ?? Math.round(input.monthlyBill / 9.4);
 
   if (input.ownership === "TENANT") {
@@ -112,7 +97,6 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
     positives.push("Concrete roof — standard mounting");
   }
 
-  // Score: tenant, small bill or no usable roof → LOW. Any other concern → MEDIUM.
   const hardStop =
     input.ownership === "TENANT" ||
     input.monthlyBill < THRESHOLDS.smallBill ||
@@ -124,13 +108,10 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
   else if (negatives.length === 0 && input.monthlyBill >= THRESHOLDS.goodBill) score = "HIGH";
   else score = "MEDIUM";
 
-  // A low score never rejects a lead: it swaps the survey visit for a call.
   const nextAction: NextAction = score === "LOW" ? "CALL" : "SURVEY";
 
-  // Tenants can't install, so no size is recommended for them.
   const recommendedKw = input.ownership === "TENANT" || size.kw < 1 ? null : size.kw;
 
-  // Concerns first for LOW/MEDIUM (that's what staff need to act on).
   const ordered = score === "HIGH" ? positives : [...negatives, ...positives];
   return { score, reasons: ordered.slice(0, 3), recommendedKw, nextAction };
 }

@@ -1,6 +1,3 @@
-// Stateless sessions: a signed JWT in an httpOnly cookie.
-// This file has no Node-only imports so it also runs in middleware (edge).
-
 import { jwtVerify, SignJWT } from "jose";
 
 export type Role = "HOMEOWNER" | "SALES" | "ADMIN";
@@ -12,7 +9,7 @@ export interface Session {
 }
 
 export const SESSION_COOKIE = "session";
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 
 function secretKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
@@ -39,16 +36,14 @@ export async function verifySession(token: string | undefined): Promise<Session 
     if (!payload.sub || (role !== "HOMEOWNER" && role !== "SALES" && role !== "ADMIN")) return null;
     return { userId: payload.sub, role, name: String(payload.name ?? "") };
   } catch {
-    return null; // expired, tampered or malformed
+    return null;
   }
 }
 
-/** Where each role lands after signing in. */
 export function homeFor(role: Role): string {
   return role === "HOMEOWNER" ? "/my" : "/sales";
 }
 
-/** Which roles may open which area. Checked in middleware AND in pages. */
 export const AREA_ROLES: Record<string, Role[]> = {
   "/sales": ["SALES", "ADMIN"],
   "/admin": ["ADMIN"],
@@ -57,6 +52,6 @@ export const AREA_ROLES: Record<string, Role[]> = {
 
 export function canAccess(pathname: string, role: Role | null): boolean {
   const area = Object.keys(AREA_ROLES).find((a) => pathname === a || pathname.startsWith(`${a}/`));
-  if (!area) return true; // public page
+  if (!area) return true;
   return role !== null && AREA_ROLES[area].includes(role);
 }

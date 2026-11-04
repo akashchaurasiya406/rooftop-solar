@@ -1,5 +1,3 @@
-// Small shared UI kit. Every screen uses these so the design stays consistent.
-
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 

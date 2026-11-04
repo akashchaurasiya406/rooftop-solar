@@ -26,7 +26,6 @@ const FILTERS: { key: string; label: string; where: Prisma.LeadWhereInput }[] = 
   { key: "LOW", label: "Low", where: { score: "LOW" } },
 ];
 
-// High first, then newest — what sales should look at first.
 const SCORE_ORDER: Record<LeadScore, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
 const ago = (d: Date) => {
@@ -83,7 +82,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <EmptyState title="No leads here" body="Nothing matches this filter yet. New leads appear as soon as a homeowner submits the form." />
         ) : (
           <Card className="overflow-hidden">
-            {/* Desktop table */}
             <table className="hidden w-full text-left text-sm md:table">
               <thead className="border-b border-line text-[13px] text-muted">
                 <tr>
@@ -117,7 +115,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               </tbody>
             </table>
 
-            {/* Mobile list */}
             <ul className="divide-y divide-line md:hidden">
               {leads.map((l) => {
                 const reasons = (l.scoreReasons as string[] | null) ?? [];

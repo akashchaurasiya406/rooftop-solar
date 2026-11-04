@@ -32,11 +32,6 @@ export async function endSession(): Promise<void> {
   store.delete(SESSION_COOKIE);
 }
 
-/**
- * Use at the top of every protected page and server action.
- * Middleware already blocks the wrong roles; this is the second check,
- * so access control never depends on a single layer.
- */
 export async function requireRole(...roles: Role[]): Promise<Session> {
   const session = await getSession();
   if (!session) redirect("/login");
