@@ -1,16 +1,17 @@
 export default function Loading() {
   return (
-    <div aria-busy="true" aria-label="Loading leads" className="animate-pulse">
-      <div className="h-7 w-32 rounded bg-line" />
-      <div className="mt-2 h-4 w-72 rounded bg-line/70" />
-      <div className="mt-6 flex gap-2">
+    <div aria-busy="true" aria-label="Loading leads">
+      <div className="skeleton h-4 w-40 rounded" />
+      <div className="skeleton mt-3 h-8 w-32 rounded" />
+      <div className="skeleton mt-2 h-4 w-72 rounded" />
+      <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-8 w-20 rounded-full bg-line/70" />
+          <div key={i} className="skeleton h-28 rounded-2xl" />
         ))}
       </div>
-      <div className="mt-4 space-y-px overflow-hidden rounded-[var(--radius-card)] border border-line">
+      <div className="mt-6 space-y-2">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-16 bg-surface" />
+          <div key={i} className="skeleton h-16 rounded-xl" />
         ))}
       </div>
     </div>
