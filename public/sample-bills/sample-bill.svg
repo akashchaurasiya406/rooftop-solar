@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="560" viewBox="0 0 420 560" font-family="Arial, sans-serif">
+  <rect width="420" height="560" fill="#fbfaf6" stroke="#d8d4c8"/>
+  <rect width="420" height="64" fill="#e9e5d8"/>
+  <text x="24" y="38" font-size="18" font-weight="bold" fill="#333">SAMPLE ELECTRICITY BILL</text>
+  <text x="24" y="56" font-size="11" fill="#666">Demo document - not a real bill</text>
+  <g font-size="13" fill="#333">
+    <text x="24" y="104">Consumer No.</text><text x="220" y="104" font-weight="bold">4100XXXXXXXX</text>
+    <text x="24" y="134">Tariff</text><text x="220" y="134">LT-I Residential</text>
+    <text x="24" y="164">Sanctioned Load</text><text x="220" y="164">3.00 kW</text>
+    <text x="24" y="194">Billing Month</text><text x="220" y="194">Oct 2026</text>
+  </g>
+  <line x1="24" y1="216" x2="396" y2="216" stroke="#ccc"/>
+  <g font-size="13" fill="#333">
+    <text x="24" y="246">Previous Reading</text><text x="220" y="246">18,240</text>
+    <text x="24" y="276">Current Reading</text><text x="220" y="276">18,580</text>
+    <text x="24" y="306" font-weight="bold">Units Consumed</text><text x="220" y="306" font-weight="bold">340</text>
+  </g>
+  <line x1="24" y1="330" x2="396" y2="330" stroke="#ccc"/>
+  <text x="24" y="372" font-size="15" font-weight="bold" fill="#333">Amount Payable</text>
+  <text x="220" y="372" font-size="20" font-weight="bold" fill="#333">Rs 3,200</text>
+</svg>
