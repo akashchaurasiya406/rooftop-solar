@@ -1,0 +1,235 @@
+// Data model for the rooftop-solar lead, quote and project tracker.
+// Design rule: anything that changes over time (prices, subsidy, calc settings)
+// is stored with effective dates, and every quote keeps a snapshot of the
+// exact rules it was computed with, so old quotes never change silently.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  HOMEOWNER
+  SALES
+  ADMIN // sales manager: can also edit price / subsidy tables
+}
+
+enum Ownership {
+  OWNER
+  TENANT
+}
+
+enum RoofType {
+  RCC // concrete slab
+  METAL_SHEET
+  ASBESTOS
+  OTHER
+}
+
+enum LeadScore {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum LeadStatus {
+  NEW // form submitted, bill not yet processed
+  BILL_REVIEW // AI has read the bill, staff must confirm values
+  REUPLOAD_REQUESTED // photo unreadable, asked homeowner for a new one
+  SURVEY // worth a site visit
+  CALL_ONLY // low score: short phone call instead of a visit
+  QUOTED
+  WON
+  LOST
+}
+
+enum BillStatus {
+  UPLOADED
+  EXTRACTED
+  NEEDS_REUPLOAD
+  CONFIRMED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+}
+
+enum ProjectStage {
+  ADVANCE_PAID
+  SURVEY_DONE
+  INSTALLATION
+  NET_METERING
+  SUBSIDY_APPLIED
+  SUBSIDY_CREDITED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         Role     @default(HOMEOWNER)
+  language     String   @default("en") // en | hi | mr
+  createdAt    DateTime @default(now())
+
+  leads         Lead[]         @relation("LeadOwner")
+  assignedLeads Lead[]         @relation("LeadAssignee")
+  quotes        Quote[]
+  billsVerified Bill[]
+  events        ProjectEvent[]
+}
+
+model Lead {
+  id            String     @id @default(cuid())
+  code          String     @unique // human-friendly, e.g. LD-30881
+  name          String
+  phone         String
+  ownership     Ownership
+  roofType      RoofType
+  roofAreaSqft  Int
+  monthlyBill   Int // ₹, as declared by the homeowner
+  pincode       String
+  district      String?
+  status        LeadStatus @default(NEW)
+  score         LeadScore?
+  scoreReasons  Json? // string[] — top reasons, shown to staff
+  recommendedKw Float?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  homeownerId  String?
+  homeowner    User?   @relation("LeadOwner", fields: [homeownerId], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation("LeadAssignee", fields: [assignedToId], references: [id])
+
+  bills   Bill[]
+  quotes  Quote[]
+  project Project?
+
+  @@index([status, score])
+}
+
+model Bill {
+  id               String     @id @default(cuid())
+  leadId           String
+  lead             Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  imagePath        String
+  status           BillStatus @default(UPLOADED)
+  // values the AI extracted (raw, with per-field confidence) — kept for audit
+  aiExtraction     Json?
+  aiError          String?
+  // values after a staff member confirmed / corrected them
+  consumerNumber   String?
+  tariffCategory   String?
+  sanctionedLoadKw Float?
+  monthlyUnits     Int?
+  verifiedById     String?
+  verifiedBy       User?      @relation(fields: [verifiedById], references: [id])
+  verifiedAt       DateTime?
+  createdAt        DateTime   @default(now())
+}
+
+// Price per kW by system-size band, valid for a date range.
+model PriceRule {
+  id            String    @id @default(cuid())
+  minKw         Float
+  maxKw         Float
+  pricePerKw    Int // ₹, all-inclusive installed price
+  effectiveFrom DateTime
+  effectiveTo   DateTime? // null = still valid
+  note          String?
+  createdAt     DateTime  @default(now())
+}
+
+// Subsidy scheme with slabs, valid for a date range.
+model SubsidyRule {
+  id            String    @id @default(cuid())
+  name          String
+  // ordered slabs: [{ "uptoKw": 2, "perKw": 30000 }, { "uptoKw": 3, "perKw": 18000 }]
+  slabs         Json
+  capAmount     Int
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  note          String?
+  createdAt     DateTime  @default(now())
+}
+
+// Editable calculation assumptions, also dated.
+model CalcSetting {
+  id                  String    @id @default(cuid())
+  generationPerKwYear Int // units (kWh) per kW per year — brief says 1,400
+  tariffPerUnit       Float // ₹ saved per self-used unit
+  exportRatePerUnit   Float // ₹ paid per surplus unit exported (net metering)
+  sqftPerKw           Int // shade-free roof area needed per kW
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?
+  createdAt           DateTime  @default(now())
+}
+
+model Quote {
+  id               String      @id @default(cuid())
+  code             String      @unique
+  leadId           String
+  lead             Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdById      String
+  createdBy        User        @relation(fields: [createdById], references: [id])
+  status           QuoteStatus @default(DRAFT)
+  systemKw         Float
+  grossCost        Int
+  subsidy          Int
+  netCost          Int
+  annualGeneration Int
+  annualSavings    Int
+  paybackYears     Float
+  // exact rules + inputs used, frozen at quote time
+  snapshot         Json
+  createdAt        DateTime    @default(now())
+
+  project Project?
+}
+
+model Project {
+  id           String       @id @default(cuid())
+  leadId       String       @unique
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  quoteId      String       @unique
+  quote        Quote        @relation(fields: [quoteId], references: [id])
+  stage        ProjectStage @default(ADVANCE_PAID)
+  statusToken  String       @unique // unguessable token for the public status link
+  stageUpdated DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+
+  events        ProjectEvent[]
+  notifications Notification[]
+}
+
+model ProjectEvent {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage     ProjectStage
+  note      String?
+  byId      String?
+  by        User?        @relation(fields: [byId], references: [id])
+  at        DateTime     @default(now())
+}
+
+// Mocked WhatsApp/SMS messages — logged, never actually sent.
+model Notification {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  channel   String // WHATSAPP | SMS
+  to        String
+  body      String
+  status    String   @default("MOCK_SENT")
+  createdAt DateTime @default(now())
+}
