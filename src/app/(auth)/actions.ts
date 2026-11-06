@@ -59,7 +59,7 @@ export async function signup(_prev: FormState, form: FormData): Promise<FormStat
     },
   });
   await startSession({ userId: user.id, role: user.role, name: user.name });
-  redirect("/my");
+  redirect("/my/new");
 }
 
 export async function logout(): Promise<void> {
