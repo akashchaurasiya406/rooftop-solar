@@ -112,9 +112,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 {leads.map((l) => {
                   const reasons = (l.scoreReasons as string[] | null) ?? [];
                   return (
-                    <tr key={l.id} className="align-top transition-colors hover:bg-paper">
+                    <tr key={l.id} className="group align-top transition-colors hover:bg-paper">
                       <td className="px-5 py-4">
-                        <p className="font-medium">{l.name}</p>
+                        <Link href={`/sales/leads/${l.id}`} className="font-medium underline-offset-4 group-hover:underline">{l.name}</Link>
                         <p className="text-[13px] text-muted">
                           {l.code} · {l.district} · {ago(l.createdAt)}
                         </p>
@@ -123,7 +123,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                       <td className="max-w-xs px-4 py-4 text-muted">{reasons[0] ?? "—"}</td>
                       <td className="num px-4 py-4 text-right">{inr(l.monthlyBill)}</td>
                       <td className="num px-4 py-4 text-right">{l.recommendedKw ? `${l.recommendedKw} kW` : "—"}</td>
-                      <td className={cx("px-5 py-4 font-medium", STATUS_TONE[l.status])}>{STATUS_LABEL[l.status]}</td>
+                      <td className="px-5 py-4">
+                        <Link href={`/sales/leads/${l.id}`} className={cx("inline-flex items-center gap-1 font-medium transition-transform hover:translate-x-0.5", STATUS_TONE[l.status])}>
+                          {STATUS_LABEL[l.status]} <span aria-hidden>→</span>
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}
@@ -134,7 +138,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               {leads.map((l, i) => {
                 const reasons = (l.scoreReasons as string[] | null) ?? [];
                 return (
-                  <li key={l.id} style={stagger(Math.min(i, 8) + 2)} className="px-4 py-4">
+                  <li key={l.id} style={stagger(Math.min(i, 8) + 2)}>
+                    <Link href={`/sales/leads/${l.id}`} className="block px-4 py-4 transition-colors active:bg-paper">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-medium">{l.name}</p>
@@ -149,6 +154,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                       </span>
                       <span className={cx("font-medium", STATUS_TONE[l.status])}>{STATUS_LABEL[l.status]}</span>
                     </div>
+                    </Link>
                   </li>
                 );
               })}
