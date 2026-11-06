@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { keepValues } from "@/components/keep-values";
 import { Alert, Button, cx, Field, Input } from "@/components/ui";
 import type { ExtractedField } from "@/lib/ai/extraction";
 import { askForNewPhoto, confirmBill, readAgain, type StaffFormState } from "../../actions";
@@ -89,7 +90,7 @@ export function BillReview({
       {state.ok && <Alert tone="info">{state.ok}</Alert>}
       {state.error && <Alert>{state.error}</Alert>}
 
-      <form action={formAction} className="space-y-4" noValidate>
+      <form onSubmit={keepValues(formAction)} className="space-y-4" noValidate>
         {FIELDS.map((f) => {
           const flagged = needsCheck.includes(f.key);
           return (
@@ -125,7 +126,7 @@ export function BillReview({
             Photo unclear? Ask the homeowner for a new one
           </button>
         ) : (
-          <form action={reAction} className="animate-rise space-y-3">
+          <form onSubmit={keepValues(reAction)} className="animate-rise space-y-3">
             {reState.ok && <Alert tone="info">{reState.ok}</Alert>}
             <Field label="What should they fix?" htmlFor="reason" errors={reState.fieldErrors?.reason}>
               <Input id="reason" name="reason" defaultValue="The units used are not readable. Please take a photo of the whole bill in good light." />

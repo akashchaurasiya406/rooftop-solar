@@ -4,12 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx } from "./ui";
 
-export function NavLinks({ items }: { items: { href: string; label: string }[] }) {
+export function NavLinks({ items, mobile }: { items: { href: string; label: string }[]; mobile?: boolean }) {
   const pathname = usePathname();
+  const matches = items.filter((n) => pathname === n.href || pathname.startsWith(n.href + "/"));
+  const activeHref = matches.sort((a, b) => b.href.length - a.href.length)[0]?.href;
   return (
-    <nav className="hidden gap-1 sm:flex">
+    <nav className={mobile ? "-mx-1 flex gap-1 overflow-x-auto pb-2 sm:hidden" : "hidden gap-1 sm:flex"}>
       {items.map((n) => {
-        const active = pathname === n.href || pathname.startsWith(`${n.href}/`);
+        const active = n.href === activeHref;
         return (
           <Link
             key={n.href}
@@ -21,7 +23,7 @@ export function NavLinks({ items }: { items: { href: string; label: string }[] }
             )}
           >
             {n.label}
-            {active && <span className="absolute inset-x-3 -bottom-[13px] h-0.5 animate-fade rounded-full bg-brand" />}
+            {active && <span className={cx("absolute inset-x-3 h-0.5 animate-fade rounded-full bg-brand", mobile ? "-bottom-[9px]" : "-bottom-[13px]")} />}
           </Link>
         );
       })}

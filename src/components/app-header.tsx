@@ -35,6 +35,11 @@ export function AppHeader({ session, nav = [] }: { session: Session; nav?: { hre
           </form>
         </div>
       </div>
+      {nav.length > 1 && (
+        <div className="mx-auto max-w-6xl px-3 sm:hidden">
+          <NavLinks items={nav} mobile />
+        </div>
+      )}
     </header>
   );
 }
