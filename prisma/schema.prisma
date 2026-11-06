@@ -117,10 +117,17 @@ model Bill {
   id               String     @id @default(cuid())
   leadId           String
   lead             Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  imagePath        String
+  imagePath        String?
+  fileData         Bytes?
+  fileMime         String?
+  fileSize         Int?
   status           BillStatus @default(UPLOADED)
   aiExtraction     Json?
+  aiModel          String?
   aiError          String?
+  aiIssues         Json?
+  reuploadReason   String?
+  billAmount       Int?
   consumerNumber   String?
   tariffCategory   String?
   sanctionedLoadKw Float?
