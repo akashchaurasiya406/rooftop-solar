@@ -8,6 +8,7 @@ export interface ScoreInput {
   monthlyBill: number;
   monthlyUnits?: number | null;
   sanctionedLoadKw?: number | null;
+  inServiceArea?: boolean;
 }
 
 export interface ScoreSettings {
@@ -91,6 +92,10 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
     positives.push(`Roof fits the recommended ${size.kw} kW`);
   }
 
+  if (input.inServiceArea === false) {
+    negatives.unshift("Outside our Vidarbha service area");
+  }
+
   if (input.roofType === "ASBESTOS") {
     negatives.push("Asbestos roof — needs a structural check");
   } else if (input.roofType === "RCC") {
@@ -99,6 +104,7 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
 
   const hardStop =
     input.ownership === "TENANT" ||
+    input.inServiceArea === false ||
     input.monthlyBill < THRESHOLDS.smallBill ||
     units < THRESHOLDS.smallUnits ||
     size.kw < THRESHOLDS.minKw;

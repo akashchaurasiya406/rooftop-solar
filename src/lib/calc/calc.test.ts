@@ -220,6 +220,16 @@ describe("scoreLead — edge cases", () => {
     expect(r.recommendedKw).toBeNull();
   });
 
+  it("LOW with a clear reason when outside the service area, but still a call (never rejected)", () => {
+    const r = scoreLead(
+      { ownership: "OWNER", roofType: "RCC", roofAreaSqft: 500, monthlyBill: 4000, monthlyUnits: 420, inServiceArea: false },
+      SCORE_SETTINGS,
+    );
+    expect(r.score).toBe("LOW");
+    expect(r.nextAction).toBe("CALL");
+    expect(r.reasons[0]).toMatch(/service area/);
+  });
+
   it("estimates units from the bill when no bill has been read yet", () => {
     const r = scoreLead(
       { ownership: "OWNER", roofType: "RCC", roofAreaSqft: 500, monthlyBill: 3200 },
