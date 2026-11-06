@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { checkBillFile } from "@/lib/files";
 import { addBill, createLead, markReadFailed, processBill, rateLimitHit } from "@/lib/leads/service";
 import { leadFormSchema } from "@/lib/leads/validation";
+import { baseUrl } from "@/lib/base-url";
+import { acceptQuote, QuoteFlowError } from "@/lib/quotes/service";
 
 export interface LeadFormState {
   error?: string;
@@ -64,4 +66,20 @@ export async function reuploadBill(leadId: string, _prev: ReuploadState, form: F
   const billId = await addBill(lead.id, { data: file.data, mime: file.mime });
   await processBill(billId).catch(() => markReadFailed(billId));
   redirect(`/my/requests/${lead.id}?sent=1`);
+}
+
+export interface AcceptState {
+  error?: string;
+}
+
+export async function acceptQuoteAction(quoteId: string, leadId: string, _prev: AcceptState, form: FormData): Promise<AcceptState> {
+  const session = await requireRole("HOMEOWNER");
+  if (form.get("agree") !== "on") return { error: "Please tick the box to confirm." };
+  try {
+    await acceptQuote(quoteId, session.userId, await baseUrl());
+  } catch (e) {
+    if (e instanceof QuoteFlowError) return { error: e.message };
+    throw e;
+  }
+  redirect(`/my/requests/${leadId}?accepted=1`);
 }
