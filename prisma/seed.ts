@@ -1,6 +1,9 @@
 import { PrismaClient, type LeadStatus } from "@prisma/client";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { scoreLead } from "../src/lib/calc/scoring";
+import { STAGES, STAGE_INFO, firstName, stageMessage, type Stage } from "../src/lib/projects/stages";
+import { advanceFor, buildOptions, validUntil } from "../src/lib/quotes/options";
 import { billImageFor, fakeConsumerNo, fakePhone, LEADS, sanctionedLoadFor } from "./seed-data";
 
 const prisma = new PrismaClient();
@@ -152,6 +155,95 @@ async function main() {
         },
       },
     });
+  }
+
+  console.log("Creating quotes and projects…");
+  const SUBSIDY = { slabs: [{ uptoKw: 2, perKw: 30000 }, { uptoKw: 3, perKw: 18000 }], capAmount: 78000 };
+  const subsidyRule = await prisma.subsidyRule.findFirstOrThrow({ where: { effectiveTo: null } });
+  const rules = { bands: PRICE_BANDS, subsidy: SUBSIDY, setting: SETTING };
+  const DEMO_URL = process.env.APP_URL ?? "http://localhost:3000";
+
+  const plans: { code: string; kw: number; stage?: Stage; daysInStage?: number; quotedDaysAgo: number }[] = [
+    { code: "LD-30881", kw: 3, quotedDaysAgo: 0 },
+    { code: "LD-30977", kw: 3, stage: "INSTALLED", daysInStage: 2, quotedDaysAgo: 7 },
+    { code: "LD-30952", kw: 6, stage: "NET_METER_APPLIED", daysInStage: 9, quotedDaysAgo: 30 },
+    { code: "LD-30998", kw: 4, stage: "ADVANCE_PAID", daysInStage: 12, quotedDaysAgo: 14 },
+    { code: "LD-30985", kw: 5, stage: "SUBSIDY_CREDITED", daysInStage: 3, quotedDaysAgo: 75 },
+  ];
+
+  for (const [n, plan] of plans.entries()) {
+    const seedLead = LEADS.find((l) => l.code === plan.code)!;
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { code: plan.code } });
+    const quotedAt = daysAgo(plan.quotedDaysAgo);
+    const { chosen, options } = buildOptions(plan.kw, seedLead.monthlyUnits, rules);
+    const quote = await prisma.quote.create({
+      data: {
+        code: `QT-${50001 + n}`,
+        leadId: lead.id,
+        createdById: sales1.id,
+        status: plan.stage ? "ACCEPTED" : "SENT",
+        sentAt: quotedAt,
+        acceptedAt: plan.stage ? daysAgo(plan.quotedDaysAgo - 1) : null,
+        validUntil: plan.stage ? validUntil(quotedAt) : validUntil(new Date()),
+        systemKw: chosen.systemKw,
+        grossCost: chosen.grossCost,
+        subsidy: chosen.subsidy,
+        netCost: chosen.netCost,
+        annualGeneration: chosen.annualGeneration,
+        annualSavings: chosen.annualSavings,
+        paybackYears: chosen.paybackYears,
+        options: options as object[],
+        snapshot: {
+          computedOn: quotedAt.toISOString(),
+          inputs: { monthlyUnits: seedLead.monthlyUnits, systemKw: chosen.systemKw },
+          subsidyRule: { id: subsidyRule.id, name: subsidyRule.name, ...SUBSIDY },
+          priceBands: PRICE_BANDS,
+          setting: SETTING,
+        },
+        createdAt: quotedAt,
+      },
+    });
+
+    if (!plan.stage) {
+      await prisma.lead.update({ where: { id: lead.id }, data: { status: "QUOTED", recommendedKw: chosen.systemKw } });
+      continue;
+    }
+
+    const last = STAGES.indexOf(plan.stage);
+    const start = plan.quotedDaysAgo - 1;
+    const end = plan.daysInStage!;
+    const stageDates = STAGES.slice(0, last + 1).map((_, i) => daysAgo(last === 0 ? end : start - Math.round(((start - end) * i) / last)));
+    const token = randomBytes(24).toString("base64url");
+    const url = `${DEMO_URL}/status/${token}`;
+    await prisma.project.create({
+      data: {
+        leadId: lead.id,
+        quoteId: quote.id,
+        stage: plan.stage,
+        advanceAmount: advanceFor(chosen.netCost),
+        statusToken: token,
+        stageUpdated: stageDates[last],
+        createdAt: stageDates[0],
+        events: {
+          create: STAGES.slice(0, last + 1).map((st, i) => ({
+            stage: st,
+            at: stageDates[i],
+            byId: i === 0 ? null : sales1.id,
+            note: i === 0 ? "Advance received (test payment)" : null,
+          })),
+        },
+        notifications: {
+          create: STAGES.slice(0, last + 1).map((st, i) => ({
+            channel: "WHATSAPP",
+            to: lead.phone,
+            body: stageMessage(firstName(lead.name), st, url),
+            createdAt: stageDates[i],
+          })),
+        },
+      },
+    });
+    await prisma.lead.update({ where: { id: lead.id }, data: { status: "WON", recommendedKw: chosen.systemKw } });
+    console.log(`  ${plan.code} → ${STAGE_INFO[plan.stage].label}`);
   }
 
   const counts = {
