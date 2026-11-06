@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Card, inr, ScoreBadge } from "@/components/ui";
+import { Alert, ButtonLink, Card, cx, inr, ScoreBadge } from "@/components/ui";
+import { STAGE_INFO } from "@/lib/projects/stages";
 import { billExtractionSchema, EXTRACTED_FIELDS, type ExtractedField } from "@/lib/ai/extraction";
 import { requireRole } from "@/lib/auth/server";
 import { db } from "@/lib/db";
@@ -21,13 +22,21 @@ const NEXT_STEP = {
   LOST: "Lost",
 } as const;
 
-export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LeadPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ quote?: string }>;
+}) {
   await requireRole("SALES", "ADMIN");
-  const { id } = await params;
+  const [{ id }, { quote: quoteFlag }] = await Promise.all([params, searchParams]);
   const lead = await db.lead.findUnique({
     where: { id },
     include: {
       assignedTo: { select: { name: true } },
+      quotes: { orderBy: { createdAt: "desc" }, select: { id: true, code: true, systemKw: true, netCost: true, paybackYears: true, status: true } },
+      project: { select: { id: true, stage: true } },
       bills: {
         orderBy: { createdAt: "desc" },
         select: {
@@ -71,6 +80,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const needsCheck = Array.isArray(issues?.needsCheck) ? issues.needsCheck : [];
   const issueList = Array.isArray(issues?.issues) ? issues.issues : Array.isArray(bill?.aiIssues) ? (bill!.aiIssues as string[]) : [];
   const reasons = (lead.scoreReasons as string[] | null) ?? [];
+  const confirmedBill = lead.bills.some((b) => b.status === "CONFIRMED");
+  const quoteBlocker =
+    lead.ownership === "TENANT" ? "Tenants need the owner's consent before we can quote." : !confirmedBill ? "Confirm the bill values first." : null;
+  const canQuote = quoteBlocker === null && lead.status !== "WON";
   const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 
   return (
@@ -99,6 +112,12 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <p className="mt-2 text-sm font-medium">{NEXT_STEP[lead.status]}</p>
         </div>
       </div>
+
+      {quoteFlag === "sent" && (
+        <div className="mt-4">
+          <Alert tone="info">Quote sent. The customer can see it in their account and download the PDF.</Alert>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_400px]">
         <div className="space-y-4">
@@ -161,6 +180,45 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 <dd className="font-medium">{lead.recommendedKw ? `${lead.recommendedKw} kW` : "—"}</dd>
               </div>
             </dl>
+          </Card>
+
+          <Card className="animate-[rise_0.6s_var(--ease-out-soft)_0.15s_both] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-medium text-muted">Quote</h2>
+              {lead.project ? (
+                <ButtonLink href={`/sales/projects/${lead.project.id}`} variant="secondary">
+                  Project: {STAGE_INFO[lead.project.stage].label} →
+                </ButtonLink>
+              ) : (
+                canQuote && <ButtonLink href={`/sales/leads/${lead.id}/quote`}>{lead.quotes.length ? "New quote" : "Build quote"}</ButtonLink>
+              )}
+            </div>
+            {!canQuote && !lead.project && quoteBlocker && <p className="mt-2 text-sm text-muted">{quoteBlocker}</p>}
+            {lead.quotes.length > 0 && (
+              <ul className="mt-4 divide-y divide-line rounded-xl border border-line">
+                {lead.quotes.map((q, i) => (
+                  <li key={q.id} className={cx("flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm", i > 0 && "text-muted")}>
+                    <span className="num">
+                      <span className="font-medium text-ink">{q.code}</span> · {q.systemKw} kW · {inr(q.netCost)} ·{" "}
+                      {q.paybackYears ? `${q.paybackYears} yr payback` : "no payback"}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span
+                        className={cx(
+                          "rounded-full px-2 py-0.5 text-[12px] font-medium",
+                          q.status === "ACCEPTED" ? "bg-high-soft text-high" : q.status === "SENT" ? "bg-brand-soft text-brand" : "bg-low-soft text-low",
+                        )}
+                      >
+                        {({ SENT: "Sent", ACCEPTED: "Accepted", DECLINED: "Replaced", DRAFT: "Draft" } as const)[q.status]}
+                      </span>
+                      <a href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noopener" className="font-medium text-brand underline-offset-4 hover:underline">
+                        PDF
+                      </a>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
 
