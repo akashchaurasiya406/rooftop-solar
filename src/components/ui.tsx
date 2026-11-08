@@ -12,7 +12,7 @@ const buttonBase =
   "relative inline-flex select-none items-center justify-center gap-2 rounded-xl px-5 min-h-11 text-[15px] font-medium transition-[background-color,box-shadow,transform,border-color] duration-200 ease-[var(--ease-out-soft)] active:scale-[0.97] disabled:opacity-60 disabled:pointer-events-none";
 const buttonVariants: Record<Variant, string> = {
   primary:
-    "bg-brand text-white shadow-[0_1px_0_rgb(255_255_255/0.15)_inset,0_6px_16px_-6px_rgb(31_95_69/0.6)] hover:bg-brand-hover hover:shadow-[0_1px_0_rgb(255_255_255/0.15)_inset,0_10px_22px_-8px_rgb(31_95_69/0.7)]",
+    "bg-brand text-on-brand shadow-[0_1px_0_rgb(255_255_255/0.15)_inset,0_6px_16px_-6px_rgb(31_95_69/0.6)] hover:bg-brand-hover hover:shadow-[0_1px_0_rgb(255_255_255/0.15)_inset,0_10px_22px_-8px_rgb(31_95_69/0.7)]",
   secondary: "bg-surface text-ink border border-line-strong shadow-soft hover:border-ink/30",
   ghost: "text-ink hover:bg-line/60",
 };
@@ -174,7 +174,7 @@ export function SunMark({ className, spin }: { className?: string; spin?: boolea
 
 export function Logo() {
   return (
-    <Link href="/" className="group inline-flex items-center gap-2 font-semibold tracking-tight">
+    <Link href="/" className="group inline-flex items-center gap-2 whitespace-nowrap font-semibold tracking-tight">
       <span className="transition-transform duration-500 ease-[var(--ease-out-soft)] group-hover:rotate-45">
         <SunMark className="size-[22px]" />
       </span>

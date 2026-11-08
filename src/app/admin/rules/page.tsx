@@ -17,7 +17,7 @@ function State({ from, to }: { from: Date; to: Date | null }) {
     <span
       className={cx(
         "rounded-full px-2 py-0.5 text-[12px] font-medium",
-        label === "In effect" ? "bg-high-soft text-high" : label === "Upcoming" ? "bg-sun-soft text-[#8a4f0f]" : "bg-low-soft text-low",
+        label === "In effect" ? "bg-high-soft text-high" : label === "Upcoming" ? "bg-sun-soft text-sun-ink" : "bg-low-soft text-low",
       )}
     >
       {label}

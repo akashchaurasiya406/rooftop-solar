@@ -50,15 +50,15 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               aria-current={active ? "page" : undefined}
               className={cx(
                 "rounded-2xl border p-4 transition-[transform,box-shadow] duration-300 active:scale-[0.98]",
-                active ? "border-ink bg-ink text-white shadow-lift" : "border-line bg-surface shadow-soft hover:-translate-y-0.5 hover:shadow-lift",
+                active ? "border-ink bg-ink text-on-ink shadow-lift" : "border-line bg-surface shadow-soft hover:-translate-y-0.5 hover:shadow-lift",
               )}
             >
               <span className="flex items-center gap-2 text-sm font-medium">
-                <span className={cx("size-2 rounded-full", t.key === "stuck" ? "bg-danger" : active ? "bg-white" : "bg-ink")} />
+                <span className={cx("size-2 rounded-full", t.key === "stuck" ? "bg-danger" : active ? "bg-on-ink" : "bg-ink")} />
                 {t.label}
               </span>
               <span className="num mt-2 block text-3xl font-semibold">{t.value}</span>
-              <span className={cx("text-[13px]", active ? "text-white/70" : "text-muted")}>{t.hint}</span>
+              <span className={cx("text-[13px]", active ? "text-on-ink/70" : "text-muted")}>{t.hint}</span>
             </Link>
           );
         })}

@@ -236,14 +236,14 @@ export default async function LeadPage({
             </div>
 
             {bill?.status === "NEEDS_REUPLOAD" ? (
-              <div className="mt-4 rounded-xl bg-sun-soft p-4 text-sm text-[#7a4510]">
+              <div className="mt-4 rounded-xl bg-sun-soft p-4 text-sm text-sun-ink">
                 <p className="font-medium">Waiting for a new photo</p>
                 <p className="mt-1">{bill.reuploadReason}</p>
               </div>
             ) : bill ? (
               <>
                 {issueList.length > 0 && bill.status !== "CONFIRMED" && (
-                  <ul className="mt-4 space-y-1.5 rounded-xl bg-medium-soft/60 p-3 text-[13px] text-[#7a4510]">
+                  <ul className="mt-4 space-y-1.5 rounded-xl bg-medium-soft/60 p-3 text-[13px] text-sun-ink">
                     {issueList.map((i) => (
                       <li key={i}>• {i}</li>
                     ))}

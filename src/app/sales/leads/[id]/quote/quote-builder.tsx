@@ -69,7 +69,7 @@ export function QuoteBuilder({
           {roofMaxKw !== null && <span>Roof fits up to {roofMaxKw} kW</span>}
         </div>
         {overRoof && (
-          <p className="mt-3 rounded-xl bg-medium-soft px-3 py-2 text-[13px] text-[#7a4510]">
+          <p className="mt-3 rounded-xl bg-medium-soft px-3 py-2 text-[13px] text-sun-ink">
             This is bigger than the roof area allows. Check the survey notes before sending.
           </p>
         )}
@@ -93,7 +93,7 @@ export function QuoteBuilder({
                   )}
                 >
                   {best === o.systemKw && (
-                    <span className="absolute right-2.5 top-2.5 rounded-full bg-sun-soft px-2 py-0.5 text-[11px] font-medium text-[#8a4f0f]">Best payback</span>
+                    <span className="absolute right-2.5 top-2.5 rounded-full bg-sun-soft px-2 py-0.5 text-[11px] font-medium text-sun-ink">Best payback</span>
                   )}
                   <p className="num font-semibold">{o.systemKw} kW</p>
                   <p className="num mt-1 text-sm">{inr(o.netCost)}</p>

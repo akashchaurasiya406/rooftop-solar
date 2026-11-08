@@ -77,16 +77,16 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               className={cx(
                 "group min-w-[9.5rem] snap-start rounded-2xl border p-4 transition-[transform,box-shadow,border-color,background-color] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.98] sm:min-w-0",
                 active
-                  ? "border-ink bg-ink text-white shadow-lift"
+                  ? "border-ink bg-ink text-on-ink shadow-lift"
                   : "border-line bg-surface shadow-soft hover:-translate-y-0.5 hover:shadow-lift",
               )}
             >
               <span className="flex items-center gap-2 text-sm font-medium">
-                <span aria-hidden className={cx("size-2 rounded-full", active && x.key === "all" ? "bg-white" : x.tone)} />
+                <span aria-hidden className={cx("size-2 rounded-full", active && x.key === "all" ? "bg-on-ink" : x.tone)} />
                 {x.label}
               </span>
               <span className="num mt-2 block text-3xl font-semibold tracking-tight">{counts[i]}</span>
-              <span className={cx("mt-0.5 block text-[13px]", active ? "text-white/70" : "text-muted")}>{x.hint}</span>
+              <span className={cx("mt-0.5 block text-[13px]", active ? "text-on-ink/70" : "text-muted")}>{x.hint}</span>
             </Link>
           );
         })}

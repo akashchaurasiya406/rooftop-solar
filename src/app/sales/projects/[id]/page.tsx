@@ -106,7 +106,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
             ) : (
               <ul className="mt-4 space-y-3">
                 {p.notifications.map((n) => (
-                  <li key={n.id} className="max-w-md rounded-2xl rounded-tl-sm bg-[#e7f6ee] px-4 py-3 text-sm">
+                  <li key={n.id} className="max-w-md rounded-2xl rounded-tl-sm bg-high-soft px-4 py-3 text-sm">
                     <p>{n.body}</p>
                     <p className="num mt-1 text-right text-[11px] text-muted">
                       to {n.to} · {when(n.createdAt)} ✓✓
