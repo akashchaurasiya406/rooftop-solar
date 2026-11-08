@@ -8,7 +8,8 @@ import { MAX_UPLOAD_BYTES, checkBillFile } from "@/lib/files";
 import { getDict, type Dict } from "@/lib/i18n";
 import { addBill, createLead, markReadFailed, processBill, rateLimitHit } from "@/lib/leads/service";
 import { makeLeadFormSchema } from "@/lib/leads/validation";
-import { acceptQuote, QuoteFlowError } from "@/lib/quotes/service";
+import { errorText } from "@/lib/errors";
+import { acceptQuote } from "@/lib/quotes/service";
 
 export interface LeadFormState {
   error?: string;
@@ -79,7 +80,8 @@ export async function acceptQuoteAction(quoteId: string, leadId: string, _prev: 
   try {
     await acceptQuote(quoteId, session.userId, await baseUrl());
   } catch (e) {
-    if (e instanceof QuoteFlowError) return { error: e.message };
+    const msg = errorText(t.staff.errors, e);
+    if (msg) return { error: msg };
     throw e;
   }
   redirect(`/my/requests/${leadId}?accepted=1`);

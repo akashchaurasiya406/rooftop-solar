@@ -115,3 +115,68 @@ export function Marquee({ items }: { items: string[] }) {
     </div>
   );
 }
+
+export function CountUp({ value, className, prefix = "", duration = 1100 }: { value: number; className?: string; prefix?: string; duration?: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(value);
+      return;
+    }
+    setShown(0);
+    let raf = 0;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      const start = performance.now();
+      const tick = (now: number) => {
+        const p = Math.min(1, (now - start) / duration);
+        setShown(Math.round(value * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    });
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [value, duration]);
+  return (
+    <span ref={ref} className={cx("num tabular-nums", className)}>
+      {prefix}
+      {shown.toLocaleString("en-IN")}
+    </span>
+  );
+}
+
+export function Pipeline({ parts, label }: { parts: { key: string; value: number; tone: string; label: string }[]; label: string }) {
+  const total = parts.reduce((a, p) => a + p.value, 0) || 1;
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[13px] text-muted">
+        <span>{label}</span>
+        <span className="flex flex-wrap gap-x-4 gap-y-1">
+          {parts.map((p) => (
+            <span key={p.key} className="inline-flex items-center gap-1.5">
+              <span className={cx("size-2 rounded-full", p.tone)} />
+              {p.label} <span className="num font-medium text-ink">{Math.round((p.value / total) * 100)}%</span>
+            </span>
+          ))}
+        </span>
+      </div>
+      <div className="mt-2.5 flex h-2.5 gap-1 overflow-hidden rounded-full">
+        {parts.map((p, i) => (
+          <div
+            key={p.key}
+            className={cx("h-full origin-left rounded-full animate-[grow_1.1s_var(--ease-out-soft)_both]", p.tone)}
+            style={{ width: `${(p.value / total) * 100}%`, animationDelay: `${200 + i * 150}ms` }}
+            title={`${p.label}: ${p.value}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

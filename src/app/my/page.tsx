@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ButtonLink, Card, EmptyState, inr, stagger } from "@/components/ui";
+import { CountUp } from "@/components/motion";
+import { ButtonLink, Card, EmptyState, stagger } from "@/components/ui";
 import { requireRole } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { dateLocale, getDict } from "@/lib/i18n";
@@ -22,7 +23,8 @@ export default async function MyPage() {
       <div className="flex animate-rise flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[2rem] font-semibold tracking-tight">
-            {M.namaste}, {session.name.split(" ")[0]} 👋
+            {M.namaste}, {session.name.split(" ")[0]}{" "}
+            <span className="inline-block origin-[70%_70%] animate-[wave_1.8s_ease-in-out_0.5s_2]">👋</span>
           </h1>
           <p className="mt-1 text-[15px] text-muted">{M.sub}</p>
         </div>
@@ -63,7 +65,9 @@ export default async function MyPage() {
                   <dl className="num grid grid-cols-2 border-t border-line bg-paper/60 text-sm">
                     <div className="px-5 py-4 sm:px-6">
                       <dt className="text-muted">{M.monthlyBill}</dt>
-                      <dd className="mt-0.5 text-base font-semibold">{inr(l.monthlyBill)}</dd>
+                      <dd className="mt-0.5 text-base font-semibold">
+                        <CountUp prefix="₹" value={l.monthlyBill} />
+                      </dd>
                     </div>
                     <div className="border-l border-line px-5 py-4 sm:px-6">
                       <dt className="text-muted">{M.suggested}</dt>

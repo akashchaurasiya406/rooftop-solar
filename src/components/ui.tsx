@@ -136,12 +136,18 @@ const scoreStyles = {
 } as const;
 const scoreLabels = { HIGH: "High", MEDIUM: "Medium", LOW: "Low" } as const;
 
-export function ScoreBadge({ score }: { score: keyof typeof scoreStyles | null }) {
-  if (!score) return <span className="text-sm text-muted">Not scored</span>;
+export function ScoreBadge({
+  score,
+  labels,
+}: {
+  score: keyof typeof scoreStyles | null;
+  labels?: { HIGH: string; MEDIUM: string; LOW: string; none: string };
+}) {
+  if (!score) return <span className="text-sm text-muted">{labels?.none ?? "Not scored"}</span>;
   return (
     <span className={cx("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-medium", scoreStyles[score])}>
       <span aria-hidden className="size-1.5 rounded-full bg-current" />
-      {scoreLabels[score]}
+      {labels?.[score] ?? scoreLabels[score]}
     </span>
   );
 }

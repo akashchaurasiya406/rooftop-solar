@@ -1,16 +1,20 @@
 "use server";
 
+import type { FeedbackStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/server";
-import { db } from "@/lib/db";
-import { confirmBillValues, processBill, requestReupload } from "@/lib/leads/service";
-import { confirmBillSchema, reuploadRequestSchema } from "@/lib/leads/validation";
 import { baseUrl } from "@/lib/base-url";
 import { QuoteError } from "@/lib/calc/quote";
-import { STAGE_INFO, STAGES, type Stage } from "@/lib/projects/stages";
-import { advanceProject, createQuote, QuoteFlowError } from "@/lib/quotes/service";
-import { MissingRulesError } from "@/lib/rules-repo";
+import { db } from "@/lib/db";
+import { errorText } from "@/lib/errors";
+import { setFeedbackStatus } from "@/lib/feedback/service";
+import { getDict } from "@/lib/i18n";
+import { fill } from "@/lib/i18n/format";
+import { confirmBillValues, processBill, requestReupload } from "@/lib/leads/service";
+import { makeConfirmBillSchema, makeReuploadRequestSchema } from "@/lib/leads/validation";
+import { STAGES, type Stage } from "@/lib/projects/stages";
+import { advanceProject, createQuote } from "@/lib/quotes/service";
 
 export interface StaffFormState {
   ok?: string;
@@ -23,12 +27,13 @@ async function billForLead(leadId: string, billId: string) {
 }
 
 export async function confirmBill(leadId: string, billId: string, _prev: StaffFormState, form: FormData): Promise<StaffFormState> {
-  const session = await requireRole("SALES", "ADMIN");
+  const [session, { t }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict()]);
+  const A = t.staff.actions;
   const bill = await billForLead(leadId, billId);
-  if (!bill) return { error: "This bill no longer exists." };
-  if (bill.status === "NEEDS_REUPLOAD") return { error: "A new photo has been requested for this bill." };
+  if (!bill) return { error: A.billGone };
+  if (bill.status === "NEEDS_REUPLOAD") return { error: A.photoRequested };
 
-  const parsed = confirmBillSchema.safeParse({
+  const parsed = makeConfirmBillSchema(t.staff.validation).safeParse({
     consumerNumber: form.get("consumerNumber") ?? "",
     tariffCategory: form.get("tariffCategory") ?? "",
     sanctionedLoadKw: form.get("sanctionedLoadKw") ?? "",
@@ -40,42 +45,45 @@ export async function confirmBill(leadId: string, billId: string, _prev: StaffFo
   const { status } = await confirmBillValues(bill.id, session.userId, parsed.data);
   revalidatePath(`/sales/leads/${leadId}`);
   revalidatePath("/sales");
-  return { ok: status === "SURVEY" ? "Confirmed. This lead is worth a survey visit." : "Confirmed. A short call is enough for this lead." };
+  return { ok: status === "SURVEY" ? A.routedSurvey : A.routedCall };
 }
 
 export async function askForNewPhoto(leadId: string, billId: string, _prev: StaffFormState, form: FormData): Promise<StaffFormState> {
-  await requireRole("SALES", "ADMIN");
+  const [, { t }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict()]);
   const bill = await billForLead(leadId, billId);
-  if (!bill) return { error: "This bill no longer exists." };
+  if (!bill) return { error: t.staff.actions.billGone };
 
-  const parsed = reuploadRequestSchema.safeParse({ reason: form.get("reason") ?? "" });
+  const parsed = makeReuploadRequestSchema(t.staff.validation).safeParse({ reason: form.get("reason") ?? "" });
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
 
   await requestReupload(bill.id, parsed.data.reason);
   revalidatePath(`/sales/leads/${leadId}`);
   revalidatePath("/sales");
-  return { ok: "The homeowner has been asked for a new photo." };
+  return { ok: t.staff.actions.askedPhoto };
 }
 
 export async function readAgain(leadId: string, billId: string): Promise<StaffFormState> {
-  await requireRole("SALES", "ADMIN");
+  const [, { t }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict()]);
+  const A = t.staff.actions;
   const bill = await billForLead(leadId, billId);
-  if (!bill?.fileData) return { error: "There is no uploaded file to read." };
+  if (!bill?.fileData) return { error: A.noFile };
   const { outcome } = await processBill(bill.id);
   revalidatePath(`/sales/leads/${leadId}`);
   revalidatePath("/sales");
-  if (outcome === "AI_UNAVAILABLE") return { error: "The AI is still unavailable. Please enter the values by hand." };
-  return { ok: outcome === "EXTRACTED" ? "Bill read again." : "The AI could not read this photo." };
+  if (outcome === "AI_UNAVAILABLE") return { error: A.aiStillDown };
+  return { ok: outcome === "EXTRACTED" ? A.readAgainOk : A.readAgainFail };
 }
 
 export async function sendQuote(leadId: string, _prev: StaffFormState, form: FormData): Promise<StaffFormState> {
-  const session = await requireRole("SALES", "ADMIN");
+  const [session, { t }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict()]);
   const kw = Number(form.get("kw"));
-  if (!Number.isFinite(kw) || kw < 1 || kw > 10) return { error: "Pick a size between 1 and 10 kW." };
+  if (!Number.isFinite(kw) || kw < 1 || kw > 10) return { error: t.staff.actions.pickSize };
   try {
     await createQuote(leadId, session.userId, kw);
   } catch (e) {
-    if (e instanceof QuoteFlowError || e instanceof MissingRulesError || e instanceof QuoteError) return { error: e.message };
+    const msg = errorText(t.staff.errors, e);
+    if (msg) return { error: msg };
+    if (e instanceof QuoteError) return { error: e.code ? t.staff.errors[e.code] : e.message };
     throw e;
   }
   revalidatePath(`/sales/leads/${leadId}`);
@@ -84,16 +92,25 @@ export async function sendQuote(leadId: string, _prev: StaffFormState, form: For
 }
 
 export async function moveStage(projectId: string, to: string, _prev: StaffFormState, form: FormData): Promise<StaffFormState> {
-  const session = await requireRole("SALES", "ADMIN");
-  if (!(STAGES as readonly string[]).includes(to)) return { error: "Unknown stage." };
+  const [session, { t }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict()]);
+  if (!(STAGES as readonly string[]).includes(to)) return { error: t.staff.actions.unknownStage };
   const note = String(form.get("note") ?? "").trim().slice(0, 300) || null;
   try {
     await advanceProject(projectId, session.userId, to as Stage, note, await baseUrl());
   } catch (e) {
-    if (e instanceof QuoteFlowError) return { error: e.message };
+    const msg = errorText(t.staff.errors, e);
+    if (msg) return { error: msg };
     throw e;
   }
   revalidatePath(`/sales/projects/${projectId}`);
   revalidatePath("/sales/projects");
-  return { ok: `Moved to "${STAGE_INFO[to as Stage].label}". Customer notified on WhatsApp.` };
+  return { ok: fill(t.staff.actions.moved, { stage: t.stages[to as Stage][0] }) };
+}
+
+export async function updateFeedback(id: string, status: FeedbackStatus): Promise<void> {
+  await requireRole("SALES", "ADMIN");
+  if (!["PENDING", "APPROVED", "HIDDEN"].includes(status)) return;
+  await setFeedbackStatus(id, status);
+  revalidatePath("/sales/feedback");
+  revalidatePath("/");
 }

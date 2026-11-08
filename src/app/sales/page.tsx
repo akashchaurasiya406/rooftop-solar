@@ -1,46 +1,35 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { LeadScore, LeadStatus, Prisma } from "@prisma/client";
+import { CountUp, Pipeline } from "@/components/motion";
 import { Card, cx, EmptyState, inr, ScoreBadge, stagger } from "@/components/ui";
 import { requireRole } from "@/lib/auth/server";
+import { formatReason, parseReasons } from "@/lib/calc/reasons";
 import { db } from "@/lib/db";
+import { getDict } from "@/lib/i18n";
+import { agoText, fill } from "@/lib/i18n/format";
 
 export const metadata: Metadata = { title: "Leads" };
-
-const STATUS_LABEL: Record<LeadStatus, string> = {
-  NEW: "New",
-  BILL_REVIEW: "Check bill",
-  REUPLOAD_REQUESTED: "Re-upload asked",
-  SURVEY: "Book survey",
-  CALL_ONLY: "Call first",
-  QUOTED: "Quoted",
-  WON: "Won",
-  LOST: "Lost",
-};
 
 const STATUS_TONE: Partial<Record<LeadStatus, string>> = {
   BILL_REVIEW: "text-medium",
   SURVEY: "text-high",
 };
 
-const FILTERS: { key: string; label: string; hint: string; tone: string; where: Prisma.LeadWhereInput }[] = [
-  { key: "all", label: "All leads", hint: "Everything open", tone: "bg-ink", where: {} },
-  { key: "review", label: "Check bill", hint: "Confirm AI-read values", tone: "bg-sun", where: { status: "BILL_REVIEW" } },
-  { key: "HIGH", label: "High", hint: "Book a survey", tone: "bg-high", where: { score: "HIGH" } },
-  { key: "MEDIUM", label: "Medium", hint: "Survey, check concern", tone: "bg-medium", where: { score: "MEDIUM" } },
-  { key: "LOW", label: "Low", hint: "Short call, no visit", tone: "bg-low", where: { score: "LOW" } },
+const FILTERS: { key: "all" | "review" | LeadScore; tone: string; where: Prisma.LeadWhereInput }[] = [
+  { key: "all", tone: "bg-ink", where: {} },
+  { key: "review", tone: "bg-sun", where: { status: "BILL_REVIEW" } },
+  { key: "HIGH", tone: "bg-high", where: { score: "HIGH" } },
+  { key: "MEDIUM", tone: "bg-medium", where: { score: "MEDIUM" } },
+  { key: "LOW", tone: "bg-low", where: { score: "LOW" } },
 ];
 
 const SCORE_ORDER: Record<LeadScore, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
-const ago = (d: Date) => {
-  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  return days === 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
-};
-
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
-  const session = await requireRole("SALES", "ADMIN");
-  const { f = "all" } = await searchParams;
+  const [session, { t }, { f = "all" }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict(), searchParams]);
+  const S = t.staff;
+  const L = S.leads;
   const filter = FILTERS.find((x) => x.key === f) ?? FILTERS[0];
 
   const [leads, counts] = await Promise.all([
@@ -49,25 +38,36 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {
-        id: true, code: true, name: true, district: true, ownership: true, monthlyBill: true,
+        id: true, code: true, name: true, district: true, monthlyBill: true,
         score: true, scoreReasons: true, recommendedKw: true, status: true, createdAt: true,
       },
     }),
     Promise.all(FILTERS.map((x) => db.lead.count({ where: x.where }))),
   ]);
   leads.sort((a, b) => (a.score ? SCORE_ORDER[a.score] : 3) - (b.score ? SCORE_ORDER[b.score] : 3));
+  const reasonOf = (json: unknown) => {
+    const r = parseReasons(json)[0];
+    return r ? formatReason(t.reasons, r) : "—";
+  };
+  const reviewWaiting = counts[1] > 0;
 
   return (
     <>
-      <div className="animate-rise">
-        <p className="text-sm text-muted">Good to see you, {session.name.split(" ")[0]}</p>
-        <h1 className="mt-1 text-[1.75rem] font-semibold tracking-tight">Leads</h1>
-        <p className="mt-1 text-[15px] text-muted">High scores first. Low scores get a call, not a visit.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="animate-rise">
+          <p className="text-sm text-muted">
+            {fill(L.greeting, { name: session.name.split(" ")[0] })} <span className="inline-block origin-[70%_70%] animate-[wave_1.8s_ease-in-out_0.4s_2]">👋</span>
+          </p>
+          <h1 className="mt-1 text-[2rem] font-semibold tracking-tight">{L.title}</h1>
+          <p className="mt-1 text-[15px] text-muted">{L.sub}</p>
+        </div>
       </div>
 
-      <nav aria-label="Filter leads" className="stagger -mx-4 mt-7 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0">
+      <nav aria-label={L.title} className="stagger -mx-4 mt-7 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0">
         {FILTERS.map((x, i) => {
           const active = x.key === filter.key;
+          const [label, hint] = L.filters[x.key];
+          const pulse = x.key === "review" && reviewWaiting && !active;
           return (
             <Link
               key={x.key}
@@ -75,89 +75,108 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               aria-current={active ? "page" : undefined}
               style={stagger(i)}
               className={cx(
-                "group min-w-[9.5rem] snap-start rounded-2xl border p-4 transition-[transform,box-shadow,border-color,background-color] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.98] sm:min-w-0",
-                active
-                  ? "border-ink bg-ink text-on-ink shadow-lift"
-                  : "border-line bg-surface shadow-soft hover:-translate-y-0.5 hover:shadow-lift",
+                "group relative min-w-[9.5rem] snap-start overflow-hidden rounded-2xl border p-4 transition-[transform,box-shadow,border-color,background-color] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.98] sm:min-w-0",
+                active ? "border-ink bg-ink text-on-ink shadow-lift" : "border-line bg-surface shadow-soft hover:-translate-y-1 hover:shadow-lift",
               )}
             >
-              <span className="flex items-center gap-2 text-sm font-medium">
-                <span aria-hidden className={cx("size-2 rounded-full", active && x.key === "all" ? "bg-on-ink" : x.tone)} />
-                {x.label}
+              {!active && (
+                <span aria-hidden className={cx("absolute -right-6 -top-6 size-16 rounded-full opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-40", x.tone)} />
+              )}
+              <span className="relative flex items-center gap-2 text-sm font-medium">
+                <span className="relative flex size-2">
+                  {pulse && <span className={cx("absolute inset-0 animate-ping rounded-full opacity-70", x.tone)} />}
+                  <span aria-hidden className={cx("relative size-2 rounded-full", active && x.key === "all" ? "bg-on-ink" : x.tone)} />
+                </span>
+                {label}
               </span>
-              <span className="num mt-2 block text-3xl font-semibold tracking-tight">{counts[i]}</span>
-              <span className={cx("mt-0.5 block text-[13px]", active ? "text-on-ink/70" : "text-muted")}>{x.hint}</span>
+              <CountUp value={counts[i]} className="relative mt-2 block text-3xl font-semibold tracking-tight" />
+              <span className={cx("relative mt-0.5 block text-[13px]", active ? "text-on-ink/70" : "text-muted")}>{hint}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-6">
+      <Card className="mt-4 animate-[rise_0.6s_var(--ease-out-soft)_0.1s_both] p-4 sm:p-5">
+        <Pipeline
+          label={L.pipeline}
+          parts={(["HIGH", "MEDIUM", "LOW"] as const).map((k, i) => ({ key: k, value: counts[2 + i], tone: { HIGH: "bg-high", MEDIUM: "bg-medium", LOW: "bg-low" }[k], label: S.score[k] }))}
+        />
+      </Card>
+
+      <div className="mt-4">
         {leads.length === 0 ? (
-          <EmptyState title="No leads here" body="Nothing matches this filter yet. New leads appear as soon as a homeowner submits the form." />
+          <EmptyState title={L.emptyTitle} body={L.emptyBody} />
         ) : (
-          <Card className="overflow-hidden animate-[rise_0.6s_var(--ease-out-soft)_0.15s_both]">
+          <Card className="animate-[rise_0.6s_var(--ease-out-soft)_0.2s_both] overflow-hidden">
             <table className="hidden w-full text-left text-sm md:table">
               <thead className="border-b border-line bg-paper/60 text-[13px] text-muted">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Lead</th>
-                  <th className="px-4 py-3 font-medium">Score</th>
-                  <th className="px-4 py-3 font-medium">Why</th>
-                  <th className="px-4 py-3 text-right font-medium">Bill / month</th>
-                  <th className="px-4 py-3 text-right font-medium">Size</th>
-                  <th className="px-5 py-3 font-medium">Next step</th>
+                  <th className="px-5 py-3 font-medium">{L.cols.lead}</th>
+                  <th className="px-4 py-3 font-medium">{L.cols.score}</th>
+                  <th className="px-4 py-3 font-medium">{L.cols.why}</th>
+                  <th className="px-4 py-3 text-right font-medium">{L.cols.bill}</th>
+                  <th className="px-4 py-3 text-right font-medium">{L.cols.size}</th>
+                  <th className="px-5 py-3 font-medium">{L.cols.next}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {leads.map((l) => {
-                  const reasons = (l.scoreReasons as string[] | null) ?? [];
-                  return (
-                    <tr key={l.id} className="group align-top transition-colors hover:bg-paper">
-                      <td className="px-5 py-4">
-                        <Link href={`/sales/leads/${l.id}`} className="font-medium underline-offset-4 group-hover:underline">{l.name}</Link>
-                        <p className="text-[13px] text-muted">
-                          {l.code} · {l.district} · {ago(l.createdAt)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4"><ScoreBadge score={l.score} /></td>
-                      <td className="max-w-xs px-4 py-4 text-muted">{reasons[0] ?? "—"}</td>
-                      <td className="num px-4 py-4 text-right">{inr(l.monthlyBill)}</td>
-                      <td className="num px-4 py-4 text-right">{l.recommendedKw ? `${l.recommendedKw} kW` : "—"}</td>
-                      <td className="px-5 py-4">
-                        <Link href={`/sales/leads/${l.id}`} className={cx("inline-flex items-center gap-1 font-medium transition-transform hover:translate-x-0.5", STATUS_TONE[l.status])}>
-                          {STATUS_LABEL[l.status]} <span aria-hidden>→</span>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {leads.map((l) => (
+                  <tr key={l.id} className="group relative align-top transition-colors duration-200 hover:bg-brand-soft/40">
+                    <td className="relative px-5 py-4">
+                      <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 origin-center scale-y-0 rounded-full bg-brand transition-transform duration-300 group-hover:scale-y-100" />
+                      <Link href={`/sales/leads/${l.id}`} className="font-medium underline-offset-4 group-hover:underline">
+                        {l.name}
+                      </Link>
+                      <p className="text-[13px] text-muted">
+                        {l.code} · {l.district ?? S.lead.outside} · {agoText(l.createdAt, S)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <ScoreBadge score={l.score} labels={S.score} />
+                    </td>
+                    <td className="max-w-xs px-4 py-4 text-muted">{reasonOf(l.scoreReasons)}</td>
+                    <td className="num px-4 py-4 text-right">{inr(l.monthlyBill)}</td>
+                    <td className="num px-4 py-4 text-right">{l.recommendedKw ? `${l.recommendedKw} kW` : "—"}</td>
+                    <td className="px-5 py-4">
+                      <Link
+                        href={`/sales/leads/${l.id}`}
+                        className={cx("inline-flex items-center gap-1 font-medium", STATUS_TONE[l.status])}
+                      >
+                        {L.status[l.status]}
+                        <span aria-hidden className="transition-transform duration-300 group-hover:translate-x-1">
+                          →
+                        </span>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
 
             <ul className="stagger divide-y divide-line md:hidden">
-              {leads.map((l, i) => {
-                const reasons = (l.scoreReasons as string[] | null) ?? [];
-                return (
-                  <li key={l.id} style={stagger(Math.min(i, 8) + 2)}>
-                    <Link href={`/sales/leads/${l.id}`} className="block px-4 py-4 transition-colors active:bg-paper">
+              {leads.map((l, i) => (
+                <li key={l.id} style={stagger(Math.min(i, 8) + 2)}>
+                  <Link href={`/sales/leads/${l.id}`} className="block px-4 py-4 transition-colors active:bg-paper">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-medium">{l.name}</p>
-                        <p className="text-[13px] text-muted">{l.code} · {l.district}</p>
+                        <p className="text-[13px] text-muted">
+                          {l.code} · {l.district ?? S.lead.outside}
+                        </p>
                       </div>
-                      <ScoreBadge score={l.score} />
+                      <ScoreBadge score={l.score} labels={S.score} />
                     </div>
-                    <p className="mt-2 text-sm text-muted">{reasons[0]}</p>
+                    <p className="mt-2 text-sm text-muted">{reasonOf(l.scoreReasons)}</p>
                     <div className="num mt-3 flex items-center justify-between text-[13px]">
                       <span>
-                        {inr(l.monthlyBill)}/mo · {l.recommendedKw ? `${l.recommendedKw} kW` : "no size"}
+                        {inr(l.monthlyBill)}
+                        {L.perMonth} · {l.recommendedKw ? `${l.recommendedKw} kW` : L.noSize}
                       </span>
-                      <span className={cx("font-medium", STATUS_TONE[l.status])}>{STATUS_LABEL[l.status]}</span>
+                      <span className={cx("font-medium", STATUS_TONE[l.status])}>{L.status[l.status]}</span>
                     </div>
-                    </Link>
-                  </li>
-                );
-              })}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </Card>
         )}

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server";
-import { addPriceRule, addSubsidyRule, RuleError } from "@/lib/rules-admin";
-import { priceRuleSchema, subsidyRuleSchema } from "@/lib/rules-validation";
+import { errorText } from "@/lib/errors";
+import { getDict } from "@/lib/i18n";
+import { addPriceRule, addSubsidyRule } from "@/lib/rules-admin";
+import { makePriceRuleSchema, makeSubsidyRuleSchema } from "@/lib/rules-validation";
 
 export interface RuleFormState {
   ok?: string;
@@ -14,32 +16,34 @@ export interface RuleFormState {
 const pick = (form: FormData, keys: string[]) => Object.fromEntries(keys.map((k) => [k, String(form.get(k) ?? "")]));
 
 export async function createSubsidyRule(_prev: RuleFormState, form: FormData): Promise<RuleFormState> {
-  await requireRole("ADMIN");
+  const [, { t }] = await Promise.all([requireRole("ADMIN"), getDict()]);
   const raw = pick(form, ["name", "slab1Upto", "slab1PerKw", "slab2Upto", "slab2PerKw", "capAmount", "effectiveFrom"]);
   if (!raw.slab2Upto) delete raw.slab2Upto;
   if (!raw.slab2PerKw) delete raw.slab2PerKw;
-  const parsed = subsidyRuleSchema.safeParse(raw);
+  const parsed = makeSubsidyRuleSchema(t.staff.rules.v).safeParse(raw);
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
   try {
     await addSubsidyRule(parsed.data);
   } catch (e) {
-    if (e instanceof RuleError) return { error: e.message };
+    const msg = errorText(t.staff.errors, e);
+    if (msg) return { error: msg };
     throw e;
   }
   revalidatePath("/admin/rules");
-  return { ok: "Subsidy rule added. Quotes from its start date will use it; earlier quotes keep their old rule." };
+  return { ok: t.staff.rules.subsidyAdded };
 }
 
 export async function createPriceRule(_prev: RuleFormState, form: FormData): Promise<RuleFormState> {
-  await requireRole("ADMIN");
-  const parsed = priceRuleSchema.safeParse(pick(form, ["minKw", "maxKw", "pricePerKw", "effectiveFrom"]));
+  const [, { t }] = await Promise.all([requireRole("ADMIN"), getDict()]);
+  const parsed = makePriceRuleSchema(t.staff.rules.v).safeParse(pick(form, ["minKw", "maxKw", "pricePerKw", "effectiveFrom"]));
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
   try {
     await addPriceRule(parsed.data);
   } catch (e) {
-    if (e instanceof RuleError) return { error: e.message };
+    const msg = errorText(t.staff.errors, e);
+    if (msg) return { error: msg };
     throw e;
   }
   revalidatePath("/admin/rules");
-  return { ok: "Price added." };
+  return { ok: t.staff.rules.priceAdded };
 }

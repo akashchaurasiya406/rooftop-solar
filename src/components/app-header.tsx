@@ -14,7 +14,7 @@ export function AppHeader({
   lang,
 }: {
   session: Session;
-  nav?: { href: string; label: string }[];
+  nav?: { href: string; label: string; badge?: number }[];
   lang?: "en" | "hi";
 }) {
   const initials = session.name

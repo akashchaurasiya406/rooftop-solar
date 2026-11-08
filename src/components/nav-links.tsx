@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx } from "./ui";
 
-export function NavLinks({ items, mobile }: { items: { href: string; label: string }[]; mobile?: boolean }) {
+export function NavLinks({ items, mobile }: { items: { href: string; label: string; badge?: number }[]; mobile?: boolean }) {
   const pathname = usePathname();
   const matches = items.filter((n) => pathname === n.href || pathname.startsWith(n.href + "/"));
   const activeHref = matches.sort((a, b) => b.href.length - a.href.length)[0]?.href;
@@ -23,6 +23,11 @@ export function NavLinks({ items, mobile }: { items: { href: string; label: stri
             )}
           >
             {n.label}
+            {n.badge ? (
+              <span className="ml-1.5 inline-flex min-w-5 animate-pop items-center justify-center rounded-full bg-sun px-1.5 text-[11px] font-semibold text-[#1c1b18]">
+                {n.badge}
+              </span>
+            ) : null}
             {active && <span className={cx("absolute inset-x-3 h-0.5 animate-fade rounded-full bg-brand", mobile ? "-bottom-[9px]" : "-bottom-[13px]")} />}
           </Link>
         );

@@ -4,7 +4,10 @@ import { useActionState, useState, useTransition } from "react";
 import { keepValues } from "@/components/keep-values";
 import { Alert, Button, cx, Field, Input } from "@/components/ui";
 import type { ExtractedField } from "@/lib/ai/extraction";
+import type { en } from "@/lib/i18n/en";
 import { askForNewPhoto, confirmBill, readAgain, type StaffFormState } from "../../actions";
+
+type ReviewText = typeof en.staff.review;
 
 export interface ReviewValues {
   consumerNumber: string;
@@ -14,28 +17,28 @@ export interface ReviewValues {
   billAmount: string;
 }
 
-function Confidence({ value, flagged }: { value: number | null; flagged: boolean }) {
-  if (value === null) return <span className="text-[12px] text-muted">entered by hand</span>;
+function Confidence({ value, flagged, t }: { value: number | null; flagged: boolean; t: ReviewText }) {
+  if (value === null) return <span className="text-[12px] text-muted">{t.byHand}</span>;
   const pct = Math.round(value * 100);
   return (
     <span
       className={cx(
-        "num inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium",
+        "num inline-flex animate-pop items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium",
         flagged ? "bg-medium-soft text-medium" : "bg-high-soft text-high",
       )}
-      title="How sure the AI is about this value"
+      title={t.confidenceTip}
     >
-      {flagged ? "Check" : "AI"} {pct}%
+      {flagged ? t.check : t.ai} {pct}%
     </span>
   );
 }
 
-const FIELDS: { key: ExtractedField; label: string; inputMode?: "numeric" | "decimal"; suffix?: string }[] = [
-  { key: "monthlyUnits", label: "Units this month", inputMode: "numeric", suffix: "kWh" },
-  { key: "sanctionedLoadKw", label: "Sanctioned load", inputMode: "decimal", suffix: "kW" },
-  { key: "consumerNumber", label: "Consumer number", inputMode: "numeric" },
-  { key: "tariffCategory", label: "Tariff" },
-  { key: "billAmount", label: "Bill amount", inputMode: "numeric", suffix: "₹" },
+const FIELDS: { key: ExtractedField; inputMode?: "numeric" | "decimal"; suffix?: string }[] = [
+  { key: "monthlyUnits", inputMode: "numeric", suffix: "kWh" },
+  { key: "sanctionedLoadKw", inputMode: "decimal", suffix: "kW" },
+  { key: "consumerNumber", inputMode: "numeric" },
+  { key: "tariffCategory" },
+  { key: "billAmount", inputMode: "numeric", suffix: "₹" },
 ];
 
 export function BillReview({
@@ -47,6 +50,7 @@ export function BillReview({
   confirmed,
   aiFailed,
   canReadAgain,
+  t,
 }: {
   leadId: string;
   billId: string;
@@ -56,6 +60,7 @@ export function BillReview({
   confirmed: boolean;
   aiFailed: boolean;
   canReadAgain: boolean;
+  t: ReviewText;
 }) {
   const [state, formAction, pending] = useActionState<StaffFormState, FormData>(confirmBill.bind(null, leadId, billId), {});
   const [reState, reAction, rePending] = useActionState<StaffFormState, FormData>(askForNewPhoto.bind(null, leadId, billId), {});
@@ -68,17 +73,18 @@ export function BillReview({
     <div className="space-y-4">
       {aiFailed && (
         <Alert tone="danger">
-          The AI couldn&apos;t read this bill. Enter the values from the image by hand
+          {t.aiFailedA}
           {canReadAgain && (
             <>
-              {" "}or{" "}
+              {" "}
+              {t.aiFailedOr}{" "}
               <button
                 type="button"
                 disabled={readingAgain}
                 onClick={() => startReading(async () => setAgain(await readAgain(leadId, billId)))}
                 className="font-semibold underline underline-offset-2"
               >
-                {readingAgain ? "reading…" : "try the AI again"}
+                {readingAgain ? t.reading : t.tryAgain}
               </button>
             </>
           )}
@@ -91,11 +97,15 @@ export function BillReview({
       {state.error && <Alert>{state.error}</Alert>}
 
       <form onSubmit={keepValues(formAction)} className="space-y-4" noValidate>
-        {FIELDS.map((f) => {
+        {FIELDS.map((f, i) => {
           const flagged = needsCheck.includes(f.key);
           return (
-            <div key={f.key} className={cx("rounded-xl transition-colors", flagged && !confirmed && "-mx-2 bg-medium-soft/50 px-2 py-2")}>
-              <Field label={f.label} htmlFor={f.key} errors={fe[f.key]}>
+            <div
+              key={f.key}
+              className={cx("animate-[rise_0.5s_var(--ease-out-soft)_both] rounded-xl transition-colors", flagged && !confirmed && "-mx-2 bg-medium-soft/50 px-2 py-2")}
+              style={{ animationDelay: `${150 + i * 70}ms` }}
+            >
+              <Field label={t.fields[f.key]} htmlFor={f.key} errors={fe[f.key]}>
                 <div className="relative">
                   <Input
                     id={f.key}
@@ -107,7 +117,7 @@ export function BillReview({
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center gap-2">
                     {f.suffix && <span className="text-[13px] text-muted">{f.suffix}</span>}
-                    <Confidence value={confidence[f.key] ?? null} flagged={flagged} />
+                    <Confidence value={confidence[f.key] ?? null} flagged={flagged} t={t} />
                   </span>
                 </div>
               </Field>
@@ -116,27 +126,27 @@ export function BillReview({
         })}
 
         <Button type="submit" pending={pending} className="w-full">
-          {pending ? "Saving…" : confirmed ? "Update values" : "Confirm values & route lead"}
+          {pending ? t.saving : confirmed ? t.update : t.confirm}
         </Button>
       </form>
 
       <div className="border-t border-line pt-4">
         {!showReupload ? (
           <button type="button" onClick={() => setShowReupload(true)} className="text-sm font-medium text-muted underline-offset-4 hover:text-ink hover:underline">
-            Photo unclear? Ask the homeowner for a new one
+            {t.unclear}
           </button>
         ) : (
           <form onSubmit={keepValues(reAction)} className="animate-rise space-y-3">
             {reState.ok && <Alert tone="info">{reState.ok}</Alert>}
-            <Field label="What should they fix?" htmlFor="reason" errors={reState.fieldErrors?.reason}>
-              <Input id="reason" name="reason" defaultValue="The units used are not readable. Please take a photo of the whole bill in good light." />
+            <Field label={t.fix} htmlFor="reason" errors={reState.fieldErrors?.reason}>
+              <Input id="reason" name="reason" defaultValue={t.fixDefault} />
             </Field>
             <div className="flex gap-2">
               <Button type="submit" variant="secondary" pending={rePending}>
-                Send request
+                {t.send}
               </Button>
               <Button type="button" variant="ghost" onClick={() => setShowReupload(false)}>
-                Cancel
+                {t.cancel}
               </Button>
             </div>
           </form>
