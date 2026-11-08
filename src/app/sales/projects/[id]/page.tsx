@@ -8,7 +8,9 @@ import { db } from "@/lib/db";
 import { dateLocale, getDict } from "@/lib/i18n";
 import { fill } from "@/lib/i18n/format";
 import { daysInStage, isStuck, nextStage, STAGES, stageIndex } from "@/lib/projects/stages";
+import { toDocItem } from "@/components/document-list";
 import { AdvanceForm } from "./advance-form";
+import { ProjectDocuments } from "./document-form";
 
 export const metadata: Metadata = { title: "Project" };
 
@@ -23,6 +25,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       quote: { select: { id: true, code: true, systemKw: true, netCost: true, subsidy: true } },
       events: { orderBy: { at: "asc" }, include: { by: { select: { name: true } } } },
       notifications: { orderBy: { createdAt: "desc" } },
+      documents: { orderBy: { createdAt: "desc" }, select: { id: true, title: true, fileMime: true, fileSize: true, createdAt: true } },
     },
   });
   if (!p) notFound();
@@ -163,6 +166,14 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               {statusUrl}
             </a>
             <p className="mt-2 text-[12px] text-muted">{P.linkNote}</p>
+          </Card>
+          <Card className="animate-[rise_0.6s_var(--ease-out-soft)_0.25s_both] p-5">
+            <h2 className="font-semibold">{P.docs}</h2>
+            <ProjectDocuments
+              projectId={p.id}
+              initial={p.documents.map((d) => toDocItem(d, dateLocale(lang)))}
+              text={{ docsNone: P.docsNone, docTitle: P.docTitle, docTitlePlaceholder: P.docTitlePlaceholder, docFile: P.docFile, docFileHint: P.docFileHint, upload: P.upload, uploading: P.uploading }}
+            />
           </Card>
         </div>
       </div>

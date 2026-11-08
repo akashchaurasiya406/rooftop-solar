@@ -9,7 +9,9 @@ import { QuoteError } from "@/lib/calc/quote";
 import { db } from "@/lib/db";
 import { errorText } from "@/lib/errors";
 import { setFeedbackStatus } from "@/lib/feedback/service";
-import { getDict } from "@/lib/i18n";
+import { MAX_UPLOAD_BYTES, checkBillFile } from "@/lib/files";
+import { toDocItem, type DocItem } from "@/components/document-list";
+import { dateLocale, getDict } from "@/lib/i18n";
 import { fill } from "@/lib/i18n/format";
 import { confirmBillValues, processBill, requestReupload } from "@/lib/leads/service";
 import { makeConfirmBillSchema, makeReuploadRequestSchema } from "@/lib/leads/validation";
@@ -20,6 +22,7 @@ export interface StaffFormState {
   ok?: string;
   error?: string;
   fieldErrors?: Record<string, string[] | undefined>;
+  doc?: DocItem;
 }
 
 async function billForLead(leadId: string, billId: string) {
@@ -111,4 +114,23 @@ export async function updateFeedback(id: string, status: FeedbackStatus): Promis
   await setFeedbackStatus(id, status);
   revalidatePath("/sales/feedback");
   revalidatePath("/");
+}
+
+export async function uploadProjectDocument(projectId: string, _prev: StaffFormState, form: FormData): Promise<StaffFormState> {
+  const [session, { lang, t }] = await Promise.all([requireRole("SALES", "ADMIN"), getDict()]);
+  const P = t.staff.projects;
+  const title = String(form.get("title") ?? "").trim();
+  if (title.length < 3 || title.length > 80) return { fieldErrors: { title: [P.docTitleBad] } };
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0 || file.size > MAX_UPLOAD_BYTES) return { fieldErrors: { file: [P.docBadFile] } };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const check = checkBillFile(bytes);
+  if (!check.ok) return { fieldErrors: { file: [P.docBadFile] } };
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { stage: true } });
+  if (!project) return { error: t.staff.actions.billGone };
+  const doc = await db.projectDocument.create({
+    data: { projectId, title, fileData: Buffer.from(bytes), fileMime: check.mime, fileSize: bytes.length, stage: project.stage, uploadedById: session.userId },
+    select: { id: true, title: true, fileMime: true, fileSize: true, createdAt: true },
+  });
+  return { ok: P.uploaded, doc: toDocItem(doc, dateLocale(lang)) };
 }

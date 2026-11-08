@@ -18,10 +18,39 @@ const PRICE_BANDS = [
 ];
 const SETTING = { generationPerKwYear: 1400, tariffPerUnit: 9.4, exportRatePerUnit: 3.5, sqftPerKw: 100 };
 
+const DOCS: { title: string; stage: (typeof STAGES)[number] }[] = [
+  { title: "Advance payment receipt", stage: STAGES[0] },
+  { title: "Site survey report", stage: STAGES[1] },
+  { title: "Net-meter application", stage: STAGES[2] },
+];
+
+function samplePdf(title: string, sub: string) {
+  const esc = (x: string) => x.replace(/[^\x20-\x7e]/g, "").replace(/([()\\])/g, "\\$1");
+  const text = `BT /F1 20 Tf 72 740 Td (${esc(title)}) Tj /F1 12 Tf 0 -28 Td (${esc(sub)}) Tj 0 -20 Td (Sample document for testing.) Tj ET`;
+  const objs = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    `<< /Length ${text.length} >>\nstream\n${text}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let out = "%PDF-1.4\n";
+  const offs: number[] = [];
+  objs.forEach((o, i) => {
+    offs.push(out.length);
+    out += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("");
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, "latin1");
+}
+
 async function main() {
   console.log("Clearing old data…");
   await prisma.notification.deleteMany();
   await prisma.projectEvent.deleteMany();
+  await prisma.projectDocument.deleteMany();
   await prisma.project.deleteMany();
   await prisma.quote.deleteMany();
   await prisma.bill.deleteMany();
@@ -231,6 +260,12 @@ async function main() {
             byId: i === 0 ? null : sales1.id,
             note: i === 0 ? "Advance received (test payment)" : null,
           })),
+        },
+        documents: {
+          create: DOCS.filter((d) => STAGES.indexOf(d.stage) <= last).map((d) => {
+            const data = samplePdf(d.title, `${lead.name} · ${lead.code}`);
+            return { title: d.title, stage: d.stage, fileData: data, fileMime: "application/pdf", fileSize: data.length, uploadedById: sales1.id, createdAt: stageDates[STAGES.indexOf(d.stage)] };
+          }),
         },
         notifications: {
           create: STAGES.slice(0, last + 1).map((st, i) => ({

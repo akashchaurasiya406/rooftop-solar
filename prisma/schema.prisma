@@ -76,11 +76,12 @@ model User {
   language     String   @default("en")
   createdAt    DateTime @default(now())
 
-  leads         Lead[]         @relation("LeadOwner")
-  assignedLeads Lead[]         @relation("LeadAssignee")
+  leads         Lead[]            @relation("LeadOwner")
+  assignedLeads Lead[]            @relation("LeadAssignee")
   quotes        Quote[]
   billsVerified Bill[]
   events        ProjectEvent[]
+  documents     ProjectDocument[]
 }
 
 model Lead {
@@ -210,6 +211,23 @@ model Project {
 
   events        ProjectEvent[]
   notifications Notification[]
+  documents     ProjectDocument[]
+}
+
+model ProjectDocument {
+  id           String       @id @default(cuid())
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title        String
+  fileData     Bytes
+  fileMime     String
+  fileSize     Int
+  stage        ProjectStage
+  uploadedById String?
+  uploadedBy   User?        @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime     @default(now())
+
+  @@index([projectId, createdAt])
 }
 
 model ProjectEvent {

@@ -1,3 +1,4 @@
+import { DocumentList, toDocItem } from "@/components/document-list";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -46,7 +47,13 @@ export default async function RequestPage({
         take: 1,
         select: { id: true, code: true, systemKw: true, netCost: true, options: true, status: true, validUntil: true },
       },
-      project: { select: { stage: true, statusToken: true } },
+      project: {
+        select: {
+          stage: true,
+          statusToken: true,
+          documents: { orderBy: { createdAt: "desc" }, select: { id: true, title: true, fileMime: true, fileSize: true, createdAt: true } },
+        },
+      },
     },
   });
   if (!lead) notFound();
@@ -127,6 +134,12 @@ export default async function RequestPage({
               })}
             </ol>
           </div>
+          {lead.project.documents.length > 0 && (
+            <div className="border-t border-line px-5 py-4 sm:px-6">
+              <h3 className="text-sm font-medium text-muted">{R.documents}</h3>
+              <DocumentList docs={lead.project.documents.map((d) => toDocItem(d, dateLocale(lang)))} empty="" />
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-paper/60 px-5 py-3 sm:px-6">
             <a href={statusUrl} className="text-sm font-medium text-brand underline-offset-4 hover:underline">
               {R.openStatus}
