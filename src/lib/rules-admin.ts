@@ -31,3 +31,13 @@ export async function addPriceRule(rule: { minKw: number; maxKw: number; pricePe
     db.priceRule.create({ data: { ...rule, effectiveTo: null } }),
   ]);
 }
+
+export async function addCalcSetting(s: { generationPerKwYear: number; tariffPerUnit: number; exportRatePerUnit: number; sqftPerKw: number; effectiveFrom: Date }) {
+  const existing = await db.calcSetting.findMany({ select: { id: true, effectiveFrom: true, effectiveTo: true } });
+  if (existing.some((r) => r.effectiveFrom.getTime() >= s.effectiveFrom.getTime())) throw new RuleError("SETTING_NOT_LATEST");
+  const toClose = existing.filter((r) => r.effectiveTo === null || r.effectiveTo > s.effectiveFrom);
+  await db.$transaction([
+    ...toClose.map((r) => db.calcSetting.update({ where: { id: r.id }, data: { effectiveTo: s.effectiveFrom } })),
+    db.calcSetting.create({ data: { ...s, effectiveTo: null } }),
+  ]);
+}

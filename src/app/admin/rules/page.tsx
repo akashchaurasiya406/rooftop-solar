@@ -6,7 +6,7 @@ import { findOverlaps, isEffectiveOn } from "@/lib/calc/rules";
 import { db } from "@/lib/db";
 import { dateLocale, getDict } from "@/lib/i18n";
 import { fill } from "@/lib/i18n/format";
-import { PriceRuleForm, SubsidyRuleForm } from "./rule-forms";
+import { CalcSettingForm, PriceRuleForm, SubsidyRuleForm } from "./rule-forms";
 
 export const metadata: Metadata = { title: "Rules" };
 
@@ -121,7 +121,8 @@ export default async function RulesPage() {
           <Card className="animate-[rise_0.6s_var(--ease-out-soft)_0.15s_both] p-5 text-sm">
             <h2 className="font-semibold">{R.settings}</h2>
             {settings.map((s) => (
-              <p key={s.id} className="num mt-2 text-muted">
+              <p key={s.id} className="num mt-2 flex flex-wrap items-center gap-2 text-muted">
+                <State from={s.effectiveFrom} to={s.effectiveTo} labels={R} />
                 {fill(R.settingLine, {
                   gen: s.generationPerKwYear.toLocaleString("en-IN"),
                   tariff: s.tariffPerUnit,
@@ -143,6 +144,19 @@ export default async function RulesPage() {
           <Card className="animate-[rise_0.6s_var(--ease-out-soft)_0.2s_both] p-5">
             <h2 className="mb-4 font-semibold">{R.newPrice}</h2>
             <PriceRuleForm t={R} />
+          </Card>
+          <Card className="animate-[rise_0.6s_var(--ease-out-soft)_0.25s_both] p-5">
+            <h2 className="font-semibold">{R.newSetting}</h2>
+            <p className="mb-4 mt-1 text-[13px] text-muted">{R.settingHint}</p>
+            <CalcSettingForm
+              t={R}
+              current={{
+                gen: settings[0]?.generationPerKwYear ?? 1400,
+                tariff: settings[0]?.tariffPerUnit ?? 9.4,
+                exportRate: settings[0]?.exportRatePerUnit ?? 3.5,
+                sqft: settings[0]?.sqftPerKw ?? 100,
+              }}
+            />
           </Card>
         </div>
       </div>

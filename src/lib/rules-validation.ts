@@ -76,3 +76,21 @@ export const makePriceRuleSchema = (m: RuleText = en.staff.rules.v) =>
 
 export const subsidyRuleSchema = makeSubsidyRuleSchema();
 export const priceRuleSchema = makePriceRuleSchema();
+
+const num = (m: RuleText, key: keyof RuleText["labels"], min: number, max: number, int = false) => {
+  const label = m.labels[key];
+  let n = z.coerce.number({ error: fill(m.required, { label }) }).min(min, fill(m.positive, { label })).max(max, fill(m.tooLarge, { label }));
+  if (int) n = n.int(fill(m.required, { label }));
+  return z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), n);
+};
+
+export const makeCalcSettingSchema = (m: RuleText = en.staff.rules.v) =>
+  z.object({
+    generationPerKwYear: num(m, "gen", 500, 2500, true),
+    tariffPerUnit: num(m, "tariff", 1, 50),
+    exportRatePerUnit: num(m, "exportRate", 0, 50),
+    sqftPerKw: num(m, "sqft", 40, 300, true),
+    effectiveFrom: date(m),
+  });
+
+export const calcSettingSchema = makeCalcSettingSchema();

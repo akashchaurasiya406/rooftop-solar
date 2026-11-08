@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server";
 import { errorText } from "@/lib/errors";
 import { getDict } from "@/lib/i18n";
-import { addPriceRule, addSubsidyRule } from "@/lib/rules-admin";
-import { makePriceRuleSchema, makeSubsidyRuleSchema } from "@/lib/rules-validation";
+import { addCalcSetting, addPriceRule, addSubsidyRule } from "@/lib/rules-admin";
+import { makeCalcSettingSchema, makePriceRuleSchema, makeSubsidyRuleSchema } from "@/lib/rules-validation";
 
 export interface RuleFormState {
   ok?: string;
@@ -46,4 +46,19 @@ export async function createPriceRule(_prev: RuleFormState, form: FormData): Pro
   }
   revalidatePath("/admin/rules");
   return { ok: t.staff.rules.priceAdded };
+}
+
+export async function createCalcSetting(_prev: RuleFormState, form: FormData): Promise<RuleFormState> {
+  const [, { t }] = await Promise.all([requireRole("ADMIN"), getDict()]);
+  const parsed = makeCalcSettingSchema(t.staff.rules.v).safeParse(pick(form, ["generationPerKwYear", "tariffPerUnit", "exportRatePerUnit", "sqftPerKw", "effectiveFrom"]));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+  try {
+    await addCalcSetting(parsed.data);
+  } catch (e) {
+    const msg = errorText(t.staff.errors, e);
+    if (msg) return { error: msg };
+    throw e;
+  }
+  revalidatePath("/admin/rules");
+  return { ok: t.staff.rules.settingAdded };
 }

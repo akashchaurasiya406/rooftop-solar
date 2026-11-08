@@ -7,7 +7,7 @@ import { computeSubsidy } from "@/lib/calc/quote";
 import type { en } from "@/lib/i18n/en";
 
 type RulesText = typeof en.staff.rules;
-import { createPriceRule, createSubsidyRule, type RuleFormState } from "../actions";
+import { createCalcSetting, createPriceRule, createSubsidyRule, type RuleFormState } from "../actions";
 
 const today = () => new Date(Date.now() + 5.5 * 3600_000 + 86_400_000).toISOString().slice(0, 10);
 
@@ -84,6 +84,37 @@ export function PriceRuleForm({ t }: { t: RulesText }) {
       </div>
       <Button type="submit" variant="secondary" pending={pending} className="w-full">
         {t.addPrice}
+      </Button>
+    </form>
+  );
+}
+
+export function CalcSettingForm({ t, current }: { t: RulesText; current: { gen: number; tariff: number; exportRate: number; sqft: number } }) {
+  const [state, action, pending] = useActionState<RuleFormState, FormData>(createCalcSetting, {});
+  const fe = state.fieldErrors ?? {};
+  return (
+    <form onSubmit={keepValues(action)} className="space-y-4">
+      {state.ok && <Alert tone="info">{state.ok}</Alert>}
+      {state.error && <Alert>{state.error}</Alert>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t.gen} htmlFor="generationPerKwYear" errors={fe.generationPerKwYear}>
+          <Input id="generationPerKwYear" name="generationPerKwYear" inputMode="numeric" defaultValue={current.gen} />
+        </Field>
+        <Field label={t.sqft} htmlFor="sqftPerKw" errors={fe.sqftPerKw}>
+          <Input id="sqftPerKw" name="sqftPerKw" inputMode="numeric" defaultValue={current.sqft} />
+        </Field>
+        <Field label={t.tariff} htmlFor="tariffPerUnit" errors={fe.tariffPerUnit}>
+          <Input id="tariffPerUnit" name="tariffPerUnit" inputMode="decimal" defaultValue={current.tariff} />
+        </Field>
+        <Field label={t.exportRate} htmlFor="exportRatePerUnit" errors={fe.exportRatePerUnit}>
+          <Input id="exportRatePerUnit" name="exportRatePerUnit" inputMode="decimal" defaultValue={current.exportRate} />
+        </Field>
+        <Field label={t.starts} htmlFor="sEffectiveFrom" errors={fe.effectiveFrom}>
+          <Input id="sEffectiveFrom" name="effectiveFrom" type="date" defaultValue={today()} />
+        </Field>
+      </div>
+      <Button type="submit" variant="secondary" pending={pending} className="w-full">
+        {t.addSetting}
       </Button>
     </form>
   );
