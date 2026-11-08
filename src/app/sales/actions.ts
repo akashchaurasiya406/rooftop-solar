@@ -102,8 +102,6 @@ export async function moveStage(projectId: string, to: string, _prev: StaffFormS
     if (msg) return { error: msg };
     throw e;
   }
-  revalidatePath(`/sales/projects/${projectId}`);
-  revalidatePath("/sales/projects");
   return { ok: fill(t.staff.actions.moved, { stage: t.stages[to as Stage][0] }) };
 }
 
