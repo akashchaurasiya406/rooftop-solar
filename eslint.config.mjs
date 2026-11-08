@@ -21,7 +21,7 @@ const eslintConfig = [
     ],
   },
   {
-    files: ["src/components/bill-picker.tsx", "src/app/sales/leads/**"],
+    files: ["src/components/bill-picker.tsx", "src/components/product-showcase.tsx", "src/app/sales/leads/**"],
     rules: { "@next/next/no-img-element": "off" },
   },
 ];
