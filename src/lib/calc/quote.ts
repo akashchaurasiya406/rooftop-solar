@@ -65,7 +65,9 @@ export interface QuoteResult {
   paybackYears: number | null;
 }
 
-export class QuoteError extends Error {}
+export class QuoteError extends Error {
+  code?: "NO_PRICE_FOR_SIZE";
+}
 
 export function computeQuote(input: QuoteInput): QuoteResult {
   const { systemKw, monthlyUnits, bands, subsidy, setting } = input;
@@ -73,7 +75,11 @@ export function computeQuote(input: QuoteInput): QuoteResult {
   if (monthlyUnits < 0) throw new QuoteError("Monthly units cannot be negative.");
 
   const band = findPriceBand(systemKw, bands);
-  if (!band) throw new QuoteError(`No price is set for a ${systemKw} kW system.`);
+  if (!band) {
+    const e = new QuoteError(`No price is set for a ${systemKw} kW system.`);
+    e.code = "NO_PRICE_FOR_SIZE";
+    throw e;
+  }
 
   const grossCost = Math.round(systemKw * band.pricePerKw);
   const subsidyAmount = Math.min(computeSubsidy(systemKw, subsidy), grossCost);

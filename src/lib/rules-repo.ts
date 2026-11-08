@@ -1,3 +1,4 @@
+import { CodedError } from "@/lib/errors";
 import "server-only";
 import { db } from "@/lib/db";
 import { subsidySlabsSchema, type CalcSettingInput, type PriceBand, type SubsidyRuleInput } from "@/lib/calc/quote";
@@ -10,7 +11,7 @@ export interface EffectiveRules {
   setting: CalcSettingInput & { id: string; sqftPerKw: number };
 }
 
-export class MissingRulesError extends Error {}
+export class MissingRulesError extends CodedError {}
 
 export async function getEffectiveRules(on: Date = new Date()): Promise<EffectiveRules> {
   const [subsidyRules, priceRules, settings] = await Promise.all([
@@ -23,9 +24,9 @@ export async function getEffectiveRules(on: Date = new Date()): Promise<Effectiv
   const setting = pickEffective(settings, on);
   const bands = priceRules.filter((r) => isEffectiveOn(r, on));
 
-  if (!subsidy) throw new MissingRulesError("No subsidy rule is in effect for this date.");
-  if (!setting) throw new MissingRulesError("No calculation settings are in effect for this date.");
-  if (bands.length === 0) throw new MissingRulesError("No prices are in effect for this date.");
+  if (!subsidy) throw new MissingRulesError("NO_SUBSIDY", "No subsidy rule is in effect for this date.");
+  if (!setting) throw new MissingRulesError("NO_SETTING", "No calculation settings are in effect for this date.");
+  if (bands.length === 0) throw new MissingRulesError("NO_PRICE", "No prices are in effect for this date.");
 
   return {
     on,

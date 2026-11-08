@@ -179,7 +179,7 @@ describe("scoreLead — sample leads from the brief", () => {
     expect(r.score).toBe("LOW");
     expect(r.recommendedKw).toBeNull();
     expect(r.nextAction).toBe("CALL");
-    expect(r.reasons[0]).toMatch(/Tenant/);
+    expect(r.reasons[0].code).toBe("TENANT");
   });
 
   it("LD-30915 Ayesha: owner, ₹650 bill → LOW (small bill), 1 kW", () => {
@@ -189,7 +189,7 @@ describe("scoreLead — sample leads from the brief", () => {
     );
     expect(r.score).toBe("LOW");
     expect(r.recommendedKw).toBe(1);
-    expect(r.reasons[0]).toMatch(/Small bill/);
+    expect(r.reasons[0]).toEqual({ code: "SMALL_BILL", p: { bill: 650 } });
   });
 });
 
@@ -200,7 +200,7 @@ describe("scoreLead — edge cases", () => {
       SCORE_SETTINGS,
     );
     expect(r.score).toBe("MEDIUM");
-    expect(r.reasons[0]).toMatch(/Asbestos/);
+    expect(r.reasons[0].code).toBe("ASBESTOS");
   });
 
   it("MEDIUM for a moderate bill", () => {
@@ -227,7 +227,7 @@ describe("scoreLead — edge cases", () => {
     );
     expect(r.score).toBe("LOW");
     expect(r.nextAction).toBe("CALL");
-    expect(r.reasons[0]).toMatch(/service area/);
+    expect(r.reasons[0].code).toBe("OUTSIDE_AREA");
   });
 
   it("estimates units from the bill when no bill has been read yet", () => {

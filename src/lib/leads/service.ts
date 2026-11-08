@@ -63,7 +63,7 @@ export async function createLead(
           district: regionForPincode(form.pincode),
           status: "NEW",
           score: provisional.score,
-          scoreReasons: provisional.reasons,
+          scoreReasons: provisional.reasons as unknown as Prisma.InputJsonValue,
           recommendedKw: provisional.recommendedKw,
           homeownerId: user.id,
           assignedToId,
@@ -154,7 +154,7 @@ export async function processBill(billId: string): Promise<{ outcome: ProcessOut
     }),
     db.lead.update({
       where: { id: lead.id },
-      data: { status: "BILL_REVIEW", score: s.score, scoreReasons: s.reasons, recommendedKw: s.recommendedKw },
+      data: { status: "BILL_REVIEW", score: s.score, scoreReasons: s.reasons as unknown as Prisma.InputJsonValue, recommendedKw: s.recommendedKw },
     }),
   ]);
   return { outcome: "EXTRACTED" };
@@ -202,7 +202,7 @@ export async function confirmBillValues(
     }),
     db.lead.update({
       where: { id: lead.id },
-      data: { status, score: s.score, scoreReasons: s.reasons, recommendedKw: s.recommendedKw },
+      data: { status, score: s.score, scoreReasons: s.reasons as unknown as Prisma.InputJsonValue, recommendedKw: s.recommendedKw },
     }),
   ]);
   return { status };

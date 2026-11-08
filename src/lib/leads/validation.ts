@@ -29,24 +29,26 @@ const optionalNumber = (min: number, max: number, msg: string) =>
     z.coerce.number().min(min, msg).max(max, msg).nullable(),
   );
 
-export const confirmBillSchema = z.object({
-  consumerNumber: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/[\s-]/g, ""))
-    .pipe(z.string().regex(LIMITS.consumerNumber, "Consumer number should be 9–15 digits.")),
-  tariffCategory: z.string().trim().min(2, "Enter the tariff.").max(60),
-  sanctionedLoadKw: optionalNumber(LIMITS.loadKw.min, LIMITS.loadKw.max, `Load should be ${LIMITS.loadKw.min}–${LIMITS.loadKw.max} kW.`),
-  monthlyUnits: z.coerce
-    .number({ error: "Enter the units." })
-    .int("Units should be a whole number.")
-    .min(LIMITS.units.min, `Units should be ${LIMITS.units.min}–${LIMITS.units.max}.`)
-    .max(LIMITS.units.max, `Units should be ${LIMITS.units.min}–${LIMITS.units.max}.`),
-  billAmount: optionalNumber(LIMITS.amount.min, LIMITS.amount.max, "Amount looks wrong."),
-});
+type StaffValidation = typeof en.staff.validation;
+
+export const makeConfirmBillSchema = (m: StaffValidation = en.staff.validation) =>
+  z.object({
+    consumerNumber: z
+      .string()
+      .trim()
+      .transform((v) => v.replace(/[\s-]/g, ""))
+      .pipe(z.string().regex(LIMITS.consumerNumber, m.consumerNumber)),
+    tariffCategory: z.string().trim().min(2, m.tariff).max(60),
+    sanctionedLoadKw: optionalNumber(LIMITS.loadKw.min, LIMITS.loadKw.max, m.load),
+    monthlyUnits: z.coerce.number({ error: m.units }).int(m.units).min(LIMITS.units.min, m.units).max(LIMITS.units.max, m.units),
+    billAmount: optionalNumber(LIMITS.amount.min, LIMITS.amount.max, m.amount),
+  });
+
+export const confirmBillSchema = makeConfirmBillSchema();
 
 export type ConfirmBill = z.infer<typeof confirmBillSchema>;
 
-export const reuploadRequestSchema = z.object({
-  reason: z.string().trim().min(5, "Tell the homeowner what to fix.").max(200),
-});
+export const makeReuploadRequestSchema = (m: StaffValidation = en.staff.validation) =>
+  z.object({ reason: z.string().trim().min(5, m.reason).max(200) });
+
+export const reuploadRequestSchema = makeReuploadRequestSchema();

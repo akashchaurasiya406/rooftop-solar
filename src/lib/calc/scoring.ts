@@ -1,3 +1,5 @@
+import type { Reason } from "./reasons";
+
 export type Score = "HIGH" | "MEDIUM" | "LOW";
 export type NextAction = "SURVEY" | "CALL";
 
@@ -18,7 +20,7 @@ export interface ScoreSettings {
 
 export interface ScoreResult {
   score: Score;
-  reasons: string[];
+  reasons: Reason[];
   recommendedKw: number | null;
   nextAction: NextAction;
 }
@@ -55,24 +57,23 @@ export function recommendSize(
   return { kw: Math.max(kw, 0), limitedBy };
 }
 
-const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResult {
-  const negatives: string[] = [];
-  const positives: string[] = [];
+  const negatives: Reason[] = [];
+  const positives: Reason[] = [];
 
   const units = input.monthlyUnits ?? Math.round(input.monthlyBill / 9.4);
 
   if (input.ownership === "TENANT") {
-    negatives.push("Tenant — the owner must agree before installation");
+    negatives.push({ code: "TENANT" });
   }
 
   if (input.monthlyBill < THRESHOLDS.smallBill || units < THRESHOLDS.smallUnits) {
-    negatives.push(`Small bill (${inr(input.monthlyBill)}/month) — savings would be low`);
+    negatives.push({ code: "SMALL_BILL", p: { bill: input.monthlyBill } });
   } else if (input.monthlyBill >= THRESHOLDS.goodBill) {
-    positives.push(`High bill (${inr(input.monthlyBill)}/month, ~${units} units)`);
+    positives.push({ code: "HIGH_BILL", p: { bill: input.monthlyBill, units } });
   } else {
-    positives.push(`Moderate bill (${inr(input.monthlyBill)}/month)`);
+    positives.push({ code: "MODERATE_BILL", p: { bill: input.monthlyBill } });
   }
 
   const size = recommendSize(units, settings, {
@@ -81,26 +82,26 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
   });
 
   if (size.kw < THRESHOLDS.minKw) {
-    negatives.push(`Roof too small (${input.roofAreaSqft} sq ft) for even 1 kW`);
+    negatives.push({ code: "ROOF_TOO_SMALL", p: { area: input.roofAreaSqft } });
   } else if (size.limitedBy === "roof") {
-    negatives.push(`Roof area limits the system to ${size.kw} kW`);
+    negatives.push({ code: "ROOF_LIMIT", p: { kw: size.kw } });
   } else if (size.limitedBy === "load") {
-    negatives.push(`Sanctioned load limits the system to ${size.kw} kW`);
+    negatives.push({ code: "LOAD_LIMIT", p: { kw: size.kw } });
   } else {
-    positives.push(`Roof fits the recommended ${size.kw} kW`);
+    positives.push({ code: "ROOF_FITS", p: { kw: size.kw } });
   }
 
   if (input.inServiceArea === false) {
-    negatives.unshift("Outside our Vidarbha service area");
+    negatives.unshift({ code: "OUTSIDE_AREA" });
   }
 
   if (input.roofType === "ASBESTOS") {
-    negatives.push("Asbestos roof — needs a structural check");
+    negatives.push({ code: "ASBESTOS" });
   } else if (input.roofType === "RCC") {
-    positives.push("Concrete roof — standard mounting");
+    positives.push({ code: "CONCRETE" });
   }
 
-  if (input.ownership === "OWNER") positives.push("Owns the house");
+  if (input.ownership === "OWNER") positives.push({ code: "OWNER" });
 
   const hardStop =
     input.ownership === "TENANT" ||

@@ -1,3 +1,4 @@
+import { CodedError } from "@/lib/errors";
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -6,7 +7,7 @@ import { canMoveTo, firstName, stageMessage, STAGE_INFO, type Stage } from "@/li
 import { getEffectiveRules } from "@/lib/rules-repo";
 import { advanceFor, buildOptions, snapKw, validUntil } from "./options";
 
-export class QuoteFlowError extends Error {}
+export class QuoteFlowError extends CodedError {}
 
 export async function confirmedUnits(leadId: string): Promise<number | null> {
   const bill = await db.bill.findFirst({
@@ -25,11 +26,11 @@ async function nextCode(prefix: "QT"): Promise<string> {
 
 export async function createQuote(leadId: string, staffId: string, kw: number, on: Date = new Date()) {
   const lead = await db.lead.findUnique({ where: { id: leadId }, select: { id: true, status: true, ownership: true } });
-  if (!lead) throw new QuoteFlowError("Lead not found.");
-  if (lead.status === "WON") throw new QuoteFlowError("This lead has already accepted a quote.");
-  if (lead.ownership === "TENANT") throw new QuoteFlowError("Tenants need the owner's consent before we can quote.");
+  if (!lead) throw new QuoteFlowError("LEAD_NOT_FOUND");
+  if (lead.status === "WON") throw new QuoteFlowError("ALREADY_WON");
+  if (lead.ownership === "TENANT") throw new QuoteFlowError("TENANT");
   const units = await confirmedUnits(leadId);
-  if (units === null) throw new QuoteFlowError("Confirm the bill values before building a quote.");
+  if (units === null) throw new QuoteFlowError("NOT_CONFIRMED");
 
   const rules = await getEffectiveRules(on);
   const { chosen, options } = buildOptions(snapKw(kw), units, rules);
@@ -71,7 +72,7 @@ export async function createQuote(leadId: string, staffId: string, kw: number, o
       if (!clash || attempt === 2) throw e;
     }
   }
-  throw new QuoteFlowError("Could not save the quote.");
+  throw new QuoteFlowError("SAVE_FAILED");
 }
 
 export function newStatusToken(): string {
@@ -87,12 +88,12 @@ export async function acceptQuote(quoteId: string, homeownerId: string, baseUrl:
     where: { id: quoteId },
     include: { lead: { select: { id: true, name: true, phone: true, homeownerId: true, status: true } } },
   });
-  if (!quote || quote.lead.homeownerId !== homeownerId) throw new QuoteFlowError("Quote not found.");
-  if (quote.status !== "SENT") throw new QuoteFlowError("This quote can no longer be accepted.");
-  if (quote.validUntil < now) throw new QuoteFlowError("This quote has expired. Please ask us for a fresh one.");
+  if (!quote || quote.lead.homeownerId !== homeownerId) throw new QuoteFlowError("QUOTE_NOT_FOUND");
+  if (quote.status !== "SENT") throw new QuoteFlowError("QUOTE_CLOSED");
+  if (quote.validUntil < now) throw new QuoteFlowError("QUOTE_EXPIRED");
 
   const latest = await db.quote.findFirst({ where: { leadId: quote.leadId }, orderBy: { createdAt: "desc" }, select: { id: true } });
-  if (latest?.id !== quote.id) throw new QuoteFlowError("A newer quote is available. Please review that one.");
+  if (latest?.id !== quote.id) throw new QuoteFlowError("QUOTE_OUTDATED");
 
   const token = newStatusToken();
   const project = await db.project.create({
@@ -127,9 +128,9 @@ export async function advanceProject(projectId: string, staffId: string, to: Sta
     where: { id: projectId },
     include: { lead: { select: { name: true, phone: true } } },
   });
-  if (!project) throw new QuoteFlowError("Project not found.");
+  if (!project) throw new QuoteFlowError("PROJECT_NOT_FOUND");
   if (!canMoveTo(project.stage, to)) {
-    throw new QuoteFlowError(`Can't move from "${STAGE_INFO[project.stage].label}" to "${STAGE_INFO[to].label}".`);
+    throw new QuoteFlowError("BAD_MOVE", `Can't move from ${STAGE_INFO[project.stage].label} to ${STAGE_INFO[to].label}.`);
   }
 
   const now = new Date();
@@ -137,7 +138,7 @@ export async function advanceProject(projectId: string, staffId: string, to: Sta
     where: { id: projectId, stage: project.stage },
     data: { stage: to, stageUpdated: now },
   });
-  if (moved.count === 0) throw new QuoteFlowError("Someone else just updated this project. Please refresh.");
+  if (moved.count === 0) throw new QuoteFlowError("CONFLICT");
 
   await db.projectEvent.create({ data: { projectId, stage: to, note, byId: staffId, at: now } });
   await notify(projectId, project.lead.phone, stageMessage(firstName(project.lead.name), to, `${baseUrl}/status/${project.statusToken}`));
