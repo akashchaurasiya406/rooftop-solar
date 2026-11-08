@@ -2,11 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/server";
-import { db } from "@/lib/db";
-import { checkBillFile } from "@/lib/files";
-import { addBill, createLead, markReadFailed, processBill, rateLimitHit } from "@/lib/leads/service";
-import { leadFormSchema } from "@/lib/leads/validation";
 import { baseUrl } from "@/lib/base-url";
+import { db } from "@/lib/db";
+import { MAX_UPLOAD_BYTES, checkBillFile } from "@/lib/files";
+import { getDict, type Dict } from "@/lib/i18n";
+import { addBill, createLead, markReadFailed, processBill, rateLimitHit } from "@/lib/leads/service";
+import { makeLeadFormSchema } from "@/lib/leads/validation";
 import { acceptQuote, QuoteFlowError } from "@/lib/quotes/service";
 
 export interface LeadFormState {
@@ -15,22 +16,23 @@ export interface LeadFormState {
   values?: Record<string, string>;
 }
 
-async function readFile(form: FormData) {
+async function readFile(form: FormData, t: Dict) {
   const file = form.get("bill");
-  if (!(file instanceof File)) return { ok: false as const, error: "Please add a photo or PDF of your bill." };
+  if (!(file instanceof File) || file.size === 0) return { ok: false as const, error: t.form.errors.bill };
   const data = new Uint8Array(await file.arrayBuffer());
   const check = checkBillFile(data);
-  return check.ok ? { ok: true as const, data, mime: check.mime } : check;
+  if (check.ok) return { ok: true as const, data, mime: check.mime };
+  return { ok: false as const, error: data.length > MAX_UPLOAD_BYTES ? t.form.errors.billBig : t.form.errors.billType };
 }
 
-export async function submitLead(_prev: LeadFormState, form: FormData): Promise<LeadFormState> {
-  const session = await requireRole("HOMEOWNER");
-  const raw = Object.fromEntries(
-    ["ownership", "roofType", "roofAreaSqft", "monthlyBill", "pincode"].map((k) => [k, String(form.get(k) ?? "")]),
-  );
+const limitMessage = (t: Dict, code: "hour" | "day") => (code === "hour" ? t.form.errors.limitHour : t.form.errors.limitDay);
 
-  const parsed = leadFormSchema.safeParse(raw);
-  const file = await readFile(form);
+export async function submitLead(_prev: LeadFormState, form: FormData): Promise<LeadFormState> {
+  const [session, { t }] = await Promise.all([requireRole("HOMEOWNER"), getDict()]);
+  const raw = Object.fromEntries(["ownership", "roofType", "roofAreaSqft", "monthlyBill", "pincode"].map((k) => [k, String(form.get(k) ?? "")]));
+
+  const parsed = makeLeadFormSchema(t.form.errors).safeParse(raw);
+  const file = await readFile(form, t);
   if (!parsed.success || !file.ok) {
     return {
       fieldErrors: { ...(parsed.success ? {} : parsed.error.flatten().fieldErrors), ...(file.ok ? {} : { bill: [file.error] }) },
@@ -39,7 +41,7 @@ export async function submitLead(_prev: LeadFormState, form: FormData): Promise<
   }
 
   const limited = await rateLimitHit(session.userId);
-  if (limited) return { error: limited, values: raw };
+  if (limited) return { error: limitMessage(t, limited), values: raw };
 
   const user = await db.user.findUniqueOrThrow({ where: { id: session.userId }, select: { id: true, name: true, phone: true } });
   const { leadId, billId } = await createLead(user, parsed.data, { data: file.data, mime: file.mime });
@@ -52,16 +54,15 @@ export interface ReuploadState {
 }
 
 export async function reuploadBill(leadId: string, _prev: ReuploadState, form: FormData): Promise<ReuploadState> {
-  const session = await requireRole("HOMEOWNER");
+  const [session, { t }] = await Promise.all([requireRole("HOMEOWNER"), getDict()]);
   const lead = await db.lead.findFirst({ where: { id: leadId, homeownerId: session.userId }, select: { id: true, status: true } });
-  if (!lead) return { error: "We couldn't find that request." };
-  if (lead.status !== "REUPLOAD_REQUESTED") return { error: "This request doesn't need a new bill photo." };
+  if (!lead || lead.status !== "REUPLOAD_REQUESTED") return { error: t.request.reuploadDefault };
 
-  const file = await readFile(form);
+  const file = await readFile(form, t);
   if (!file.ok) return { error: file.error };
 
   const limited = await rateLimitHit(session.userId);
-  if (limited?.includes("hour")) return { error: limited };
+  if (limited === "hour") return { error: limitMessage(t, limited) };
 
   const billId = await addBill(lead.id, { data: file.data, mime: file.mime });
   await processBill(billId).catch(() => markReadFailed(billId));
@@ -73,8 +74,8 @@ export interface AcceptState {
 }
 
 export async function acceptQuoteAction(quoteId: string, leadId: string, _prev: AcceptState, form: FormData): Promise<AcceptState> {
-  const session = await requireRole("HOMEOWNER");
-  if (form.get("agree") !== "on") return { error: "Please tick the box to confirm." };
+  const [session, { t }] = await Promise.all([requireRole("HOMEOWNER"), getDict()]);
+  if (form.get("agree") !== "on") return { error: t.request.tickBox };
   try {
     await acceptQuote(quoteId, session.userId, await baseUrl());
   } catch (e) {

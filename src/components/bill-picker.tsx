@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ACCEPTED_BILL_TYPES, MAX_UPLOAD_BYTES } from "@/lib/files";
+import { en } from "@/lib/i18n/en";
 import { cx } from "./ui";
+
+type PickerText = typeof en.form.picker;
 
 const MAX_EDGE = 1800;
 
@@ -24,20 +27,22 @@ export async function shrinkImage(file: File): Promise<File> {
 }
 
 const SAMPLES = [
-  { label: "Clear sample", href: "/sample-bills/sample-bill-clear.jpg" },
-  { label: "Blurry sample", href: "/sample-bills/sample-bill-blurry.jpg" },
-];
+  { key: "clear", href: "/sample-bills/sample-bill-clear.jpg" },
+  { key: "blurry", href: "/sample-bills/sample-bill-blurry.jpg" },
+] as const;
 
 export function BillPicker({
   file,
   onChange,
   error,
   showSamples = true,
+  text = en.form.picker,
 }: {
   file: File | null;
   onChange: (f: File | null) => void;
   error?: string;
   showSamples?: boolean;
+  text?: PickerText;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -61,7 +66,7 @@ export function BillPicker({
     const f = await shrinkImage(raw);
     setBusy(false);
     if (f.size > MAX_UPLOAD_BYTES) {
-      setLocalError("That file is larger than 4 MB. Please take a new photo or upload a smaller PDF.");
+      setLocalError(text.tooBig);
       onChange(null);
       return;
     }
@@ -99,14 +104,14 @@ export function BillPicker({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{file.name}</p>
-            <p className="num text-[13px] text-muted">{Math.max(1, Math.round(file.size / 1024))} KB · ready to send</p>
+            <p className="num text-[13px] text-muted">{Math.max(1, Math.round(file.size / 1024))} KB · {text.ready}</p>
           </div>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             className="rounded-lg px-3 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft active:scale-95"
           >
-            Change
+            {text.change}
           </button>
         </div>
       ) : (
@@ -125,9 +130,9 @@ export function BillPicker({
               <circle cx="12" cy="13" r="3.5" />
             </svg>
           </span>
-          <span className="font-medium">{busy ? "Preparing photo…" : "Take a photo or choose a file"}</span>
+          <span className="font-medium">{busy ? text.preparing : text.choose}</span>
           <span id="bill-help" className="text-[13px] text-muted">
-            Your latest electricity bill · photo or PDF · up to 4 MB
+            {text.help}
           </span>
         </button>
       )}
@@ -138,12 +143,12 @@ export function BillPicker({
       )}
       {showSamples && (
         <p className="mt-3 text-[13px] text-muted">
-          No bill to hand?{" "}
+          {text.noBill}{" "}
           {SAMPLES.map((s, i) => (
             <span key={s.href}>
-              {i > 0 && " or "}
+              {i > 0 && ` ${text.or} `}
               <button type="button" onClick={() => loadSample(s.href)} className="font-medium text-brand underline-offset-4 hover:underline">
-                {s.label}
+                {text[s.key]}
               </button>
             </span>
           ))}

@@ -3,6 +3,7 @@
 import { startTransition, useActionState, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { BillPicker } from "@/components/bill-picker";
 import { Alert, Button, cx, Field, Input } from "@/components/ui";
+import type { en } from "@/lib/i18n/en";
 import { submitLead, type LeadFormState } from "../actions";
 
 function Choice({
@@ -37,7 +38,7 @@ function Choice({
             </span>
             {o.hint && <span className="text-[13px] text-muted">{o.hint}</span>}
             {checked && (
-              <span aria-hidden className="absolute right-2.5 top-2.5 inline-flex size-5 animate-pop items-center justify-center rounded-full bg-brand text-white">
+              <span aria-hidden className="absolute right-2.5 top-2.5 inline-flex size-5 animate-pop items-center justify-center rounded-full bg-brand text-on-brand">
                 <svg viewBox="0 0 20 20" className="size-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 10.5 8.5 14 15 6.5" />
                 </svg>
@@ -54,7 +55,7 @@ function Section({ n, title, children }: { n: number; title: string; children: R
   return (
     <section className="animate-rise" style={{ animationDelay: `${n * 70}ms` }}>
       <h2 className="mb-3 flex items-center gap-2.5 text-[15px] font-semibold">
-        <span className="num inline-flex size-6 items-center justify-center rounded-full bg-ink text-xs text-white">{n}</span>
+        <span className="num inline-flex size-6 items-center justify-center rounded-full bg-ink text-xs text-on-ink">{n}</span>
         {title}
       </h2>
       <div className="space-y-4">{children}</div>
@@ -62,7 +63,7 @@ function Section({ n, title, children }: { n: number; title: string; children: R
   );
 }
 
-export function LeadForm() {
+export function LeadForm({ t }: { t: typeof en.form }) {
   const [state, formAction, pending] = useActionState<LeadFormState, FormData>(submitLead, {});
   const v = state.values ?? {};
   const [edited, setEdited] = useState<Set<string>>(new Set());
@@ -85,49 +86,44 @@ export function LeadForm() {
     <form onSubmit={onSubmit} onChange={(e) => markEdited((e.target as unknown as HTMLInputElement).name)} noValidate className="space-y-9">
       {state.error && <Alert>{state.error}</Alert>}
 
-      <Section n={1} title="Your home">
-        <Field label="Do you own this house?" htmlFor="ownership" errors={fe.ownership}>
+      <Section n={1} title={t.home}>
+        <Field label={t.own} htmlFor="ownership" errors={fe.ownership}>
           <Choice
             name="ownership"
             value={ownership}
             onChange={setOwnership}
             invalid={!!fe.ownership}
             options={[
-              { value: "OWNER", label: "I own it" },
-              { value: "TENANT", label: "I rent it" },
+              { value: "OWNER", label: t.owner },
+              { value: "TENANT", label: t.tenant },
             ]}
           />
         </Field>
-        <Field label="Roof type" htmlFor="roofType" errors={fe.roofType}>
+        <Field label={t.roofType} htmlFor="roofType" errors={fe.roofType}>
           <Choice
             name="roofType"
             value={roofType}
             onChange={setRoofType}
             invalid={!!fe.roofType}
-            options={[
-              { value: "RCC", label: "Concrete", hint: "Flat RCC slab" },
-              { value: "METAL_SHEET", label: "Metal sheet", hint: "Tin / GI sheet" },
-              { value: "ASBESTOS", label: "Asbestos", hint: "Cement sheet" },
-              { value: "OTHER", label: "Other", hint: "Tiles, mixed" },
-            ]}
+            options={(["RCC", "METAL_SHEET", "ASBESTOS", "OTHER"] as const).map((k) => ({ value: k, label: t.roofs[k][0], hint: t.roofs[k][1] }))}
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Roof area (sq ft)" htmlFor="roofAreaSqft" errors={fe.roofAreaSqft} hint="Open, shade-free part">
-            <Input id="roofAreaSqft" name="roofAreaSqft" inputMode="numeric" placeholder="e.g. 400" defaultValue={v.roofAreaSqft} invalid={!!fe.roofAreaSqft} />
+          <Field label={t.roofArea} htmlFor="roofAreaSqft" errors={fe.roofAreaSqft} hint={t.roofAreaHint}>
+            <Input id="roofAreaSqft" name="roofAreaSqft" inputMode="numeric" placeholder="400" defaultValue={v.roofAreaSqft} invalid={!!fe.roofAreaSqft} />
           </Field>
-          <Field label="Pincode" htmlFor="pincode" errors={fe.pincode}>
+          <Field label={t.pincode} htmlFor="pincode" errors={fe.pincode}>
             <Input id="pincode" name="pincode" inputMode="numeric" maxLength={6} autoComplete="postal-code" placeholder="440022" defaultValue={v.pincode} invalid={!!fe.pincode} />
           </Field>
         </div>
       </Section>
 
-      <Section n={2} title="Your electricity bill">
-        <Field label="Usual monthly bill (₹)" htmlFor="monthlyBill" errors={fe.monthlyBill} hint="A rough figure is fine — we'll read the exact one from your bill.">
-          <Input id="monthlyBill" name="monthlyBill" inputMode="numeric" placeholder="e.g. 2500" defaultValue={v.monthlyBill} invalid={!!fe.monthlyBill} />
+      <Section n={2} title={t.billSection}>
+        <Field label={t.monthlyBill} htmlFor="monthlyBill" errors={fe.monthlyBill} hint={t.monthlyBillHint}>
+          <Input id="monthlyBill" name="monthlyBill" inputMode="numeric" placeholder="2500" defaultValue={v.monthlyBill} invalid={!!fe.monthlyBill} />
         </Field>
         <div className="space-y-1.5">
-          <span className="block text-sm font-medium">Photo of your latest bill</span>
+          <span className="block text-sm font-medium">{t.billPhoto}</span>
           <BillPicker
             file={file}
             onChange={(f) => {
@@ -135,16 +131,17 @@ export function LeadForm() {
               markEdited("bill");
             }}
             error={fe.bill?.[0]}
+            text={t.picker}
           />
         </div>
       </Section>
 
       <div className="sticky bottom-0 -mx-4 border-t border-line bg-paper/90 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
         <Button type="submit" pending={pending} className="w-full min-h-12 text-base">
-          {pending ? "Reading your bill…" : "Check my home"}
+          {pending ? t.reading : t.submit}
         </Button>
         <p className="mt-2 text-center text-[13px] text-muted">
-          {pending ? "This takes about 10 seconds." : "Your bill is only seen by our team. We never share it."}
+          {pending ? t.readingNote : t.privacy}
         </p>
       </div>
     </form>

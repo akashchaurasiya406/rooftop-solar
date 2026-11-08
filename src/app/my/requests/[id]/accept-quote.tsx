@@ -1,10 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Alert, Button, inr } from "@/components/ui";
 import { acceptQuoteAction, type AcceptState } from "../../actions";
 
-export function AcceptQuote({ quoteId, leadId, advance }: { quoteId: string; leadId: string; advance: number }) {
+export function AcceptQuote({
+  quoteId,
+  leadId,
+  advance,
+  text,
+}: {
+  quoteId: string;
+  leadId: string;
+  advance: number;
+  text: { agreeA: string; agreeB: string; testMode: string; accept: string; confirming: string };
+}) {
   const [state, action, pending] = useActionState<AcceptState, FormData>(acceptQuoteAction.bind(null, quoteId, leadId), {});
   return (
     <form action={action} className="space-y-4">
@@ -12,30 +22,30 @@ export function AcceptQuote({ quoteId, leadId, advance }: { quoteId: string; lea
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-paper/60 p-4 text-[15px]">
         <input type="checkbox" name="agree" className="mt-1 size-5 shrink-0 accent-[var(--color-brand)]" />
         <span>
-          I want to go ahead and pay the <span className="num font-semibold">{inr(advance)}</span> advance.
-          <span className="mt-1 block text-[13px] text-muted">Test mode: no money is taken in this demo.</span>
+          {text.agreeA} <span className="num font-semibold">{inr(advance)}</span> {text.agreeB}
+          <span className="mt-1 block text-[13px] text-muted">{text.testMode}</span>
         </span>
       </label>
-      <Button type="submit" pending={pending} className="w-full min-h-12 text-base">
-        {pending ? "Confirming…" : "Accept quote & pay advance"}
+      <Button type="submit" pending={pending} className="min-h-12 w-full text-base">
+        {pending ? text.confirming : text.accept}
       </Button>
     </form>
   );
 }
 
-export function CopyLink({ url }: { url: string }) {
+export function CopyLink({ url, copy, copied }: { url: string; copy: string; copied: string }) {
+  const [done, setDone] = useState(false);
   return (
     <button
       type="button"
-      onClick={(e) => {
+      onClick={() => {
         navigator.clipboard?.writeText(url);
-        const b = e.currentTarget;
-        b.textContent = "Copied ✓";
-        setTimeout(() => (b.textContent = "Copy link"), 1800);
+        setDone(true);
+        window.setTimeout(() => setDone(false), 1800);
       }}
       className="rounded-lg px-3 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand-soft active:scale-95"
     >
-      Copy link
+      {done ? copied : copy}
     </button>
   );
 }

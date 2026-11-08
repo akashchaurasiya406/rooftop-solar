@@ -4,8 +4,9 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { endSession, startSession } from "@/lib/auth/server";
 import { canAccess, homeFor } from "@/lib/auth/session";
-import { loginSchema, safeNext, signupSchema } from "@/lib/auth/validation";
+import { makeLoginSchema, makeSignupSchema, safeNext } from "@/lib/auth/validation";
 import { db } from "@/lib/db";
+import { getDict } from "@/lib/i18n";
 
 export interface FormState {
   error?: string;
@@ -17,7 +18,8 @@ const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 
 export async function login(_prev: FormState, form: FormData): Promise<FormState> {
   const raw = { email: String(form.get("email") ?? ""), password: String(form.get("password") ?? "") };
-  const parsed = loginSchema.safeParse(raw);
+  const { t } = await getDict();
+  const parsed = makeLoginSchema(t.auth.errors).safeParse(raw);
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors, values: { email: raw.email } };
   }
@@ -25,7 +27,7 @@ export async function login(_prev: FormState, form: FormData): Promise<FormState
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
   const ok = await bcrypt.compare(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !ok) {
-    return { error: "Email or password is incorrect.", values: { email: raw.email } };
+    return { error: t.auth.errors.wrongLogin, values: { email: raw.email } };
   }
 
   await startSession({ userId: user.id, role: user.role, name: user.name });
@@ -40,13 +42,14 @@ export async function signup(_prev: FormState, form: FormData): Promise<FormStat
     phone: String(form.get("phone") ?? ""),
     password: String(form.get("password") ?? ""),
   };
-  const parsed = signupSchema.safeParse(raw);
+  const { t } = await getDict();
+  const parsed = makeSignupSchema(t.auth.errors).safeParse(raw);
   const values = { name: raw.name, email: raw.email, phone: raw.phone };
   if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors, values };
 
   const exists = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (exists) {
-    return { fieldErrors: { email: ["An account with this email already exists. Sign in instead."] }, values };
+    return { fieldErrors: { email: [t.auth.errors.emailTaken] }, values };
   }
 
   const user = await db.user.create({
