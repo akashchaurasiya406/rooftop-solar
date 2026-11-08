@@ -15,7 +15,7 @@ Every demo account uses the password **`Demo@1234`**. The sign-in page also list
 
 To try the full homeowner journey, create a new account on **Sign up**. On the form, use **"Blurry sample"** to see the re-upload request, then **"Clear sample"** to see the bill being read.
 
-Use the **EN / हिं** switch for Hindi and the moon icon for dark mode.
+Use the **EN / हिं / मरा** switch for Hindi or Marathi and the moon icon for dark mode.
 
 ## Run it locally
 
