@@ -233,3 +233,26 @@ model Notification {
   status    String   @default("MOCK_SENT")
   createdAt DateTime @default(now())
 }
+
+enum FeedbackStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  name      String?
+  city      String?
+  rating    Int
+  message   String
+  lang      String         @default("en")
+  status    FeedbackStatus @default(PENDING)
+  sample    Boolean        @default(false)
+  ipHash    String?
+  userId    String?
+  createdAt DateTime       @default(now())
+
+  @@index([status, createdAt])
+  @@index([ipHash, createdAt])
+}

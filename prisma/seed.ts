@@ -1,4 +1,4 @@
-import { PrismaClient, type LeadStatus } from "@prisma/client";
+import { Prisma, PrismaClient, type LeadStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { scoreLead } from "../src/lib/calc/scoring";
@@ -118,7 +118,7 @@ async function main() {
         district: l.district,
         status,
         score: result.score,
-        scoreReasons: result.reasons,
+        scoreReasons: result.reasons as unknown as Prisma.InputJsonValue,
         recommendedKw: result.recommendedKw,
         createdAt,
         homeownerId: l.code === "LD-30881" ? homeowner.id : null,
@@ -245,6 +245,22 @@ async function main() {
     await prisma.lead.update({ where: { id: lead.id }, data: { status: "WON", recommendedKw: chosen.systemKw } });
     console.log(`  ${plan.code} → ${STAGE_INFO[plan.stage].label}`);
   }
+
+  console.log("Creating sample feedback…");
+  await prisma.feedback.deleteMany({ where: { sample: true } });
+  const SAMPLE_FEEDBACK = [
+    { name: "Sunil K.", city: "Nagpur", rating: 5, lang: "en", message: "Uploaded my bill in the evening and had a clear quote the next day. The payback number was exactly what I needed to decide." },
+    { name: "मीना ब.", city: "वर्धा", rating: 5, lang: "hi", message: "सब्सिडी का पूरा हिसाब पहले से कोटेशन में था। किसी दफ़्तर के चक्कर नहीं लगाने पड़े।" },
+    { name: "Farah Q.", city: "Amravati", rating: 4, lang: "en", message: "The status link saved me so many calls. I could see when the net meter was applied without asking anyone." },
+    { name: "राजेश इ.", city: "बुलढाणा", rating: 4, lang: "hi", message: "बिल छोटा था तो उन्होंने साफ़ बताया कि बचत कम होगी। ईमानदारी अच्छी लगी।" },
+    { name: "Anil G.", city: "Nagpur", rating: 5, lang: "en", message: "They read my bill photo correctly and the surveyor already knew my sanctioned load when he came." },
+    { name: "Pooja D.", city: "Washim", rating: 5, lang: "en", message: "Simple form, no jargon. Even my parents could follow the quote." },
+    { name: "कविता ठ.", city: "गोंदिया", rating: 4, lang: "hi", message: "धुंधली फ़ोटो भेजी तो तुरंत नई फ़ोटो माँगी गई। दूसरी बार में सब ठीक पढ़ लिया।" },
+    { name: "Vijay R.", city: "Yavatmal", rating: 5, lang: "en", message: "Clear options for 2, 3 and 4 kW. Seeing the payback side by side made the choice easy." },
+  ];
+  await prisma.feedback.createMany({
+    data: SAMPLE_FEEDBACK.map((x, i) => ({ ...x, status: "APPROVED" as const, sample: true, createdAt: daysAgo(2 + i * 3) })),
+  });
 
   const counts = {
     users: await prisma.user.count(),

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FeedbackForm, FeedbackWall } from "@/components/feedback";
 import { LanguageToggle } from "@/components/language-toggle";
 import { Magnetic, Marquee, Reveal, Spotlight, WordReveal } from "@/components/motion";
 import { ProductShowcase, type ShowcaseText } from "@/components/product-showcase";
@@ -8,6 +9,7 @@ import { ButtonLink, cx, Logo } from "@/components/ui";
 import { getSession } from "@/lib/auth/server";
 import { homeFor } from "@/lib/auth/session";
 import { computeQuote, type QuoteResult } from "@/lib/calc/quote";
+import { publishedFeedback } from "@/lib/feedback/service";
 import { getDict } from "@/lib/i18n";
 import { STAGES } from "@/lib/projects/stages";
 import { getEffectiveRules } from "@/lib/rules-repo";
@@ -37,7 +39,13 @@ function Arrow({ className }: { className?: string }) {
 }
 
 export default async function Home() {
-  const [session, quote, { lang, t }] = await Promise.all([getSession(), sampleQuote(), getDict()]);
+  const [session, quote, { lang, t }, feedback] = await Promise.all([
+    getSession(),
+    sampleQuote(),
+    getDict(),
+    publishedFeedback().catch(() => ({ items: [], average: null, count: 0 })),
+  ]);
+  const F = t.feedback;
   const L = t.landing;
   const showcase: ShowcaseText = {
     ...t.showcase,
@@ -206,6 +214,37 @@ export default async function Home() {
               <p className="mt-3 text-[13px] leading-relaxed text-muted">{L.quoteNote}</p>
             </Reveal>
           )}
+        </div>
+      </section>
+
+      <section id="feedback" className="mt-32">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <Reveal>
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className={cx("text-sm font-medium text-muted", !hiType && "uppercase tracking-[0.18em]")}>{F.kicker}</p>
+                <h2 className="mt-3 max-w-2xl text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">{F.title}</h2>
+                <p className="mt-3 max-w-xl text-lg text-muted">{F.sub}</p>
+              </div>
+              {feedback.average !== null && (
+                <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface px-5 py-4 shadow-soft">
+                  <span className="num text-4xl font-semibold tracking-tight">{feedback.average.toFixed(1)}</span>
+                  <span className="text-sm leading-tight text-muted">
+                    <span className="block text-sun">{"★".repeat(Math.round(feedback.average))}{"☆".repeat(5 - Math.round(feedback.average))}</span>
+                    {F.average} · {feedback.count} {F.reviews}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Reveal>
+        </div>
+        <Reveal className="mt-10">
+          <FeedbackWall t={F} items={feedback.items.map(({ id, name, city, rating, message, sample }) => ({ id, name, city, rating, message, sample }))} />
+        </Reveal>
+        <div className="mx-auto mt-14 max-w-2xl px-5 sm:px-8">
+          <Reveal>
+            <FeedbackForm t={F} />
+          </Reveal>
         </div>
       </section>
 
