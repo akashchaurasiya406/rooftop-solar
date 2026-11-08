@@ -190,3 +190,28 @@ export function Logo() {
 }
 
 export const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+
+export function PageSkeleton({ variant = "detail" }: { variant?: "list" | "detail" | "narrow" }) {
+  const block = (cls: string) => <div className={cx("skeleton rounded-xl", cls)} />;
+  return (
+    <div aria-busy="true" aria-live="polite" className={cx(variant === "narrow" && "mx-auto max-w-2xl")}>
+      <span className="sr-only">Loading…</span>
+      {block("h-4 w-28")}
+      {block("mt-4 h-8 w-64")}
+      {block("mt-2 h-4 w-80 max-w-full")}
+      {variant === "list" ? (
+        <>
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>
+          <div className="mt-6 space-y-2">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skeleton h-16 rounded-xl" />)}</div>
+        </>
+      ) : variant === "narrow" ? (
+        <div className="mt-8 space-y-4">{[0, 1].map((i) => <div key={i} className="skeleton h-56 rounded-2xl" />)}</div>
+      ) : (
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_380px]">
+          <div className="space-y-4">{block("h-80")}{block("h-40")}</div>
+          {block("h-96")}
+        </div>
+      )}
+    </div>
+  );
+}
