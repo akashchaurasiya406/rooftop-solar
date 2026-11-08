@@ -1,12 +1,16 @@
 import { logout } from "@/app/(auth)/actions";
 import type { Session } from "@/lib/auth/session";
+import type { Lang } from "@/lib/i18n/langs";
 import { LanguageToggle } from "./language-toggle";
 import { NavLinks } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 import { Logo } from "./ui";
 
-const ROLE_LABEL = { HOMEOWNER: "Homeowner", SALES: "Sales", ADMIN: "Sales manager" } as const;
-const ROLE_LABEL_HI = { HOMEOWNER: "घर मालिक", SALES: "सेल्स", ADMIN: "सेल्स मैनेजर" } as const;
+const TEXT = {
+  en: { roles: { HOMEOWNER: "Homeowner", SALES: "Sales", ADMIN: "Sales manager" }, signOut: "Sign out" },
+  hi: { roles: { HOMEOWNER: "घर मालिक", SALES: "सेल्स", ADMIN: "सेल्स मैनेजर" }, signOut: "साइन आउट" },
+  mr: { roles: { HOMEOWNER: "घरमालक", SALES: "सेल्स", ADMIN: "सेल्स मॅनेजर" }, signOut: "साइन आउट" },
+} as const;
 
 export function AppHeader({
   session,
@@ -15,7 +19,7 @@ export function AppHeader({
 }: {
   session: Session;
   nav?: { href: string; label: string; badge?: number }[];
-  lang?: "en" | "hi";
+  lang?: Lang;
 }) {
   const initials = session.name
     .split(" ")
@@ -31,7 +35,7 @@ export function AppHeader({
         <div className="ml-auto flex items-center gap-3">
           <div className="hidden text-right leading-tight sm:block">
             <p className="text-sm font-medium">{session.name}</p>
-            <p className="text-xs text-muted">{(lang === "hi" ? ROLE_LABEL_HI : ROLE_LABEL)[session.role]}</p>
+            <p className="text-xs text-muted">{TEXT[lang ?? "en"].roles[session.role]}</p>
           </div>
           <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full bg-brand-soft text-[13px] font-semibold text-brand">
             {initials}
@@ -43,7 +47,7 @@ export function AppHeader({
               type="submit"
               className="rounded-lg px-2.5 py-1.5 text-sm text-muted transition-all hover:bg-line/60 hover:text-ink active:scale-95"
             >
-              {lang === "hi" ? "साइन आउट" : "Sign out"}
+              {TEXT[lang ?? "en"].signOut}
             </button>
           </form>
         </div>

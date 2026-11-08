@@ -32,7 +32,6 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             ...t.showcase,
             steps: t.landing.showcase,
             stages: STAGES.map((s) => t.stages[s][0]),
-            toast: lang === "hi" ? "नमस्ते प्रशांत, आपके पैनल और इन्वर्टर रास्ते में हैं।" : "Namaste Prashant, your panels and inverter are on the way.",
           }}
         />
         <ul className="mt-10 space-y-3">

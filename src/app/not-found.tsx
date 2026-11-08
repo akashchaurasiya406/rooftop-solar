@@ -4,6 +4,7 @@ import { getLang } from "@/lib/i18n";
 const TEXT = {
   en: { title: "Page not found", body: "The link may be old or mistyped.", home: "Go to home" },
   hi: { title: "पेज नहीं मिला", body: "लिंक पुराना हो सकता है या उसमें कोई ग़लती है।", home: "होम पर जाएँ" },
+  mr: { title: "पान सापडले नाही", body: "लिंक जुनी असू शकते किंवा त्यात चूक असू शकते.", home: "मुख्य पानावर जा" },
 };
 
 export default async function NotFound() {

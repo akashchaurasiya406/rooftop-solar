@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { setLanguage } from "@/app/_actions/lang";
+import { LANG_LABEL, LANGS, type Lang } from "@/lib/i18n/langs";
 import { cx } from "./ui";
 
-export function LanguageToggle({ lang, className }: { lang: "en" | "hi"; className?: string }) {
+export function LanguageToggle({ lang, className }: { lang: Lang; className?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const choose = (next: "en" | "hi") => {
+  const choose = (next: Lang) => {
     if (next === lang) return;
     start(async () => {
       await setLanguage(next);
@@ -25,11 +26,11 @@ export function LanguageToggle({ lang, className }: { lang: "en" | "hi"; classNa
       <span
         aria-hidden
         className={cx(
-          "absolute inset-y-0.5 w-[calc(50%-2px)] rounded-full bg-ink transition-transform duration-300 ease-[var(--ease-out-soft)]",
-          lang === "hi" ? "translate-x-full" : "translate-x-0",
+          "absolute inset-y-0.5 left-0.5 w-[calc((100%-4px)/3)] rounded-full bg-ink transition-transform duration-300 ease-[var(--ease-out-soft)]",
+          lang === "hi" ? "translate-x-full" : lang === "mr" ? "translate-x-[200%]" : "translate-x-0",
         )}
       />
-      {(["en", "hi"] as const).map((l) => (
+      {LANGS.map((l) => (
         <button
           key={l}
           type="button"
@@ -38,7 +39,7 @@ export function LanguageToggle({ lang, className }: { lang: "en" | "hi"; classNa
           onClick={() => choose(l)}
           className={cx("relative z-10 min-w-11 rounded-full px-2.5 py-1 transition-colors duration-300", lang === l ? "text-on-ink" : "text-muted hover:text-ink")}
         >
-          {l === "en" ? "EN" : "हिं"}
+          {LANG_LABEL[l]}
         </button>
       ))}
     </div>

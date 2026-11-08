@@ -6,6 +6,7 @@ export const metadata = { title: "No access" };
 const TEXT = {
   en: { title: "You don't have access to this page", body: "This area is for a different kind of account.", home: "Go to home" },
   hi: { title: "आपको इस पेज तक पहुँच नहीं है", body: "यह हिस्सा किसी दूसरे तरह के खाते के लिए है।", home: "होम पर जाएँ" },
+  mr: { title: "तुम्हाला या पानावर प्रवेश नाही", body: "हा भाग वेगळ्या प्रकारच्या खात्यासाठी आहे.", home: "मुख्य पानावर जा" },
 };
 
 export default async function Forbidden() {

@@ -51,12 +51,8 @@ export default async function Home() {
     ...t.showcase,
     steps: L.showcase,
     stages: STAGES.map((s) => t.stages[s][0]),
-    toast:
-      lang === "hi"
-        ? "नमस्ते प्रशांत, आपके पैनल और इन्वर्टर रास्ते में हैं।"
-        : "Namaste Prashant, your panels and inverter are on the way.",
   };
-  const hiType = lang === "hi";
+  const hiType = lang !== "en";
 
   return (
     <div className="min-h-dvh overflow-x-clip">
