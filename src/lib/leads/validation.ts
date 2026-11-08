@@ -1,23 +1,25 @@
 import { z } from "zod";
 import { LIMITS } from "@/lib/ai/extraction";
+import { en } from "@/lib/i18n/en";
 
-const int = (label: string, min: number, max: number) =>
+type FormErrors = typeof en.form.errors;
+
+const int = (required: string, range: string, min: number, max: number) =>
   z.preprocess(
     (v) => (typeof v === "string" ? (v.trim() === "" ? undefined : v.replace(/[,\s₹]/g, "")) : v),
-    z.coerce
-      .number({ error: `Enter ${label}.` })
-      .int(`Enter ${label} as a whole number.`)
-      .min(min, `${label[0].toUpperCase()}${label.slice(1)} looks too small.`)
-      .max(max, `${label[0].toUpperCase()}${label.slice(1)} looks too large.`),
+    z.coerce.number({ error: required }).int(range).min(min, range).max(max, range),
   );
 
-export const leadFormSchema = z.object({
-  ownership: z.enum(["OWNER", "TENANT"], { error: "Tell us if you own or rent the house." }),
-  roofType: z.enum(["RCC", "METAL_SHEET", "ASBESTOS", "OTHER"], { error: "Choose your roof type." }),
-  roofAreaSqft: int("your roof area", 50, 20000),
-  monthlyBill: int("your monthly bill", 100, 100000),
-  pincode: z.string().trim().regex(/^[1-9]\d{5}$/, "Enter a 6-digit pincode."),
-});
+export const makeLeadFormSchema = (m: FormErrors = en.form.errors) =>
+  z.object({
+    ownership: z.enum(["OWNER", "TENANT"], { error: m.ownership }),
+    roofType: z.enum(["RCC", "METAL_SHEET", "ASBESTOS", "OTHER"], { error: m.roofType }),
+    roofAreaSqft: int(m.roofArea, m.roofAreaRange, 50, 20000),
+    monthlyBill: int(m.monthlyBill, m.monthlyBillRange, 100, 100000),
+    pincode: z.string().trim().regex(/^[1-9]\d{5}$/, m.pincode),
+  });
+
+export const leadFormSchema = makeLeadFormSchema();
 
 export type LeadForm = z.infer<typeof leadFormSchema>;
 

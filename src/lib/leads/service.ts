@@ -30,13 +30,13 @@ async function leastBusySalesUser(): Promise<string | null> {
   return staff[0]?.id ?? null;
 }
 
-export async function rateLimitHit(userId: string): Promise<string | null> {
+export async function rateLimitHit(userId: string): Promise<"hour" | "day" | null> {
   const [leadsToday, uploadsLastHour] = await Promise.all([
     db.lead.count({ where: { homeownerId: userId, createdAt: { gte: new Date(Date.now() - 86_400_000) } } }),
     db.bill.count({ where: { lead: { homeownerId: userId }, createdAt: { gte: new Date(Date.now() - 3_600_000) } } }),
   ]);
-  if (uploadsLastHour >= LIMITS_PER_USER.uploadsPerHour) return "You've uploaded a lot of bills in the last hour. Please try again later.";
-  if (leadsToday >= LIMITS_PER_USER.leadsPerDay) return "You've sent several requests today. Our team will contact you about them soon.";
+  if (uploadsLastHour >= LIMITS_PER_USER.uploadsPerHour) return "hour";
+  if (leadsToday >= LIMITS_PER_USER.leadsPerDay) return "day";
   return null;
 }
 
