@@ -65,8 +65,6 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
 
   if (input.ownership === "TENANT") {
     negatives.push("Tenant — the owner must agree before installation");
-  } else {
-    positives.push("Owns the house");
   }
 
   if (input.monthlyBill < THRESHOLDS.smallBill || units < THRESHOLDS.smallUnits) {
@@ -101,6 +99,8 @@ export function scoreLead(input: ScoreInput, settings: ScoreSettings): ScoreResu
   } else if (input.roofType === "RCC") {
     positives.push("Concrete roof — standard mounting");
   }
+
+  if (input.ownership === "OWNER") positives.push("Owns the house");
 
   const hardStop =
     input.ownership === "TENANT" ||
